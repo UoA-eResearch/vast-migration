@@ -1,0 +1,31 @@
+import httpx
+
+from models.research_drive import ResearchDrive
+
+
+class ProjectDBAPIClient:
+    """Client for retrieving research drive information from the ProjectDB API."""
+
+    def __init__(self, base_url: str = "", api_key: str = "") -> None:
+        self.base_url = base_url
+        self._client = httpx.Client(
+            base_url=base_url,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "apikey": api_key,
+            },
+        )
+
+    def get_research_drives(self) -> list[ResearchDrive]:
+        """Return all Unifiles research drives with their associated quotas."""
+        raise NotImplementedError
+
+    def close(self) -> None:
+        self._client.close()
+
+    def __enter__(self) -> ProjectDBAPIClient:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        self.close()
