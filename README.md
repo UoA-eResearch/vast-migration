@@ -36,18 +36,28 @@ This creates a `.venv` in the project root, installs all runtime and dev depende
 ## Usage
 
 ### 1. Set environment variables
-Create a `.env` file in the project root with the following content:
 
-```env
-VAST_HOST=your_vast_host
-VAST_TOKEN=your_vast_token
-PROJECT_DB_API_KEY=your_project_db_api_key
+Copy `.env.example` to create environment-specific files:
+
+```powershell
+cp .env.example .env.prod
+cp .env.example .env.test
 ```
+
+Fill in the values for each environment. These files are git-ignored — never commit them.
+
+| Variable | Description |
+|---|---|
+| `VAST_HOST` | Hostname of the Vast Data API |
+| `VAST_TOKEN` | API token for Vast Data |
+| `PROJECT_DB_API_HOST` | Hostname of the ProjectDB API |
+| `PROJECT_DB_API_KEY` | API key for the ProjectDB API |
 
 ### 2. Run the script
 
-```bash
-uv run python main.py
+```powershell
+uv run --env-file .env.prod python main.py   # production
+uv run --env-file .env.test python main.py   # test
 ```
 
 ## Testing
