@@ -1,3 +1,5 @@
+import logging
+
 import httpx
 
 from models.research_drive import ResearchDrive
@@ -19,7 +21,13 @@ class ProjectDBAPIClient:
 
     def get_research_drives(self) -> list[ResearchDrive]:
         """Return all Unifiles research drives with their associated quotas."""
-        raise NotImplementedError
+        try:
+            response = self._client.get("/researchdrive")
+            response.raise_for_status()
+            return [ResearchDrive(**drive) for drive in response.json()]
+        except httpx.HTTPError as e:
+            logging.error(f"Error fetching research drives from ProjectDB: {e}")
+            raise
 
     def close(self) -> None:
         self._client.close()
