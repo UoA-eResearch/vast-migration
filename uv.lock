@@ -266,12 +266,22 @@ wheels = [
 ]
 
 [[package]]
+name = "urllib3"
+version = "2.7.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
+]
+
+[[package]]
 name = "vast-migration"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
+    { name = "vastpy" },
 ]
 
 [package.optional-dependencies]
@@ -290,5 +300,18 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
     { name = "respx", marker = "extra == 'dev'", specifier = ">=0.21" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
+    { name = "vastpy", specifier = ">=0.3.22" },
 ]
 provides-extras = ["dev"]
+
+[[package]]
+name = "vastpy"
+version = "0.3.22"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8d/03/d40eee094e3d64b86298e932d534b73fde1f4f4e60854ae9765c61b543d5/vastpy-0.3.22.tar.gz", hash = "sha256:6eacb180889c693e6499a3ff08bec66b4ef3cf4d91af7038015aa94f5fd174fd", size = 10080, upload-time = "2026-03-26T17:43:33.651Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/87/78/dc6abc395472567766d6bf93f699908efbd38b2deff6a8be6dc30b5c62be/vastpy-0.3.22-py3-none-any.whl", hash = "sha256:1dcdd28a776ddd7f5a8de247fd3d1daafe0cdcb670d876304bd0cceae450a50f", size = 11233, upload-time = "2026-03-26T17:43:32.918Z" },
+]

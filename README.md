@@ -39,7 +39,7 @@ This creates a `.venv` in the project root, installs all runtime and dev depende
 
 Copy `.env.example` to create environment-specific files:
 
-```powershell
+```bash
 cp .env.example .env.prod
 cp .env.example .env.test
 ```
@@ -52,13 +52,24 @@ Fill in the values for each environment. These files are git-ignored — never c
 | `VAST_TOKEN` | API token for Vast Data |
 | `PROJECT_DB_API_HOST` | Hostname of the ProjectDB API |
 | `PROJECT_DB_API_KEY` | API key for the ProjectDB API |
+| `LOG_LEVEL` | (optional) Logging level (e.g. DEBUG, INFO, WARNING) |
+| `WRITE_OUTPUT_FILES` | (optional) Whether to write output files with the results (true/false) |
 
 ### 2. Run the script
 
-```powershell
+```bash
 uv run --env-file .env.prod python main.py   # production
 uv run --env-file .env.test python main.py   # test
 ```
+
+### Dry run
+
+To verify what the script _would_ do without making any changes in Vast, use the `--dry-run` flag. It will fetch research drives from ProjectDB and check for existing views, but will not create any new views.
+
+```bash
+uv run --env-file .env.prod python main.py --dry-run
+```
+
 
 ## Testing
 
