@@ -67,11 +67,8 @@ class VastAPIClient:
         """
         if not self.client:
             raise RuntimeError("VAST client not initialized")
-        try:
-            return self.client.views[view_id].get()
-        except Exception:
-            log.exception("failed to get view %s", view_id)
-            raise
+        
+        return self.client.views[view_id].get()
 
     def get_views(self, path: str = "") -> Any:
         """Return the list of views from the cluster. Optionally filter by `path`.
@@ -81,11 +78,9 @@ class VastAPIClient:
         """
         if not self.client:
             raise RuntimeError("VAST client not initialized")
-        try:
-            return self.client.views.get(path=path)
-        except Exception:
-            log.exception("failed to get views")
-            raise
+        
+        return self.client.views.get(path=path)
+
 
     def create_view(
         self,
@@ -134,32 +129,29 @@ class VastAPIClient:
                 raise ValueError(
                     "s3_bucket_name and s3_bucket_owner are required when S3 protocol is enabled"
                 )
-        try:
+
+        if not policy_id:
+            policies = self.client.viewpolicies.get(name="default")
+            if not policies:
+                raise RuntimeError("no default view policy found")
+            default = policies[0]
+            policy_id = default.get("id") if isinstance(default, dict) else None
             if not policy_id:
-                policies = self.client.viewpolicies.get(name="default")
-                if not policies:
-                    raise RuntimeError("no default view policy found")
-                default = policies[0]
-                policy_id = default.get("id") if isinstance(default, dict) else None
-                if not policy_id:
-                    raise RuntimeError("could not determine default policy id")
-            view_data = {
-                "path": path,
-                "policy_id": policy_id,
-                "create_dir": create_dir,
-                "protocols": prot_list,
-                "share": smb_share_name,
-                "bucket": s3_bucket_name,
-                "bucket-owner": s3_bucket_owner,
-                "s3-versioning": True if "S3" in prot_list else None,
-            }
-            # Remove None values so the API doesn't receive JSON nulls for optional fields
-            view_data = {k: v for k, v in view_data.items() if v is not None}
-            log.info("creating view with data: %s", view_data)
-            return self.client.views.post(**view_data)
-        except Exception as e:
-            log.exception("failed to create view")
-            raise RuntimeError(f"failed to create view: {e}") from e
+                raise RuntimeError("could not determine default policy id")
+        view_data = {
+            "path": path,
+            "policy_id": policy_id,
+            "create_dir": create_dir,
+            "protocols": prot_list,
+            "share": smb_share_name,
+            "bucket": s3_bucket_name,
+            "bucket-owner": s3_bucket_owner,
+            "s3-versioning": True if "S3" in prot_list else None,
+        }
+        # Remove None values so the API doesn't receive JSON nulls for optional fields
+        view_data = {k: v for k, v in view_data.items() if v is not None}
+        log.info("creating view with data: %s", view_data)
+        return self.client.views.post(**view_data)
 
     def update_view(
         self,
@@ -189,12 +181,8 @@ class VastAPIClient:
         """
         if not self.client:
             raise RuntimeError("VAST client not initialized")
-        try:
-            log.info("updating view %s with params: %s", view_id, params)
-            return self.client.views[view_id].patch(**params)
-        except Exception:
-            log.exception("failed to update view")
-            raise
+        log.info("updating view %s with params: %s", view_id, params)
+        return self.client.views[view_id].patch(**params)
 
 
     ### View Policy Management ###
@@ -206,11 +194,9 @@ class VastAPIClient:
         """
         if not self.client:
             raise RuntimeError("VAST client not initialized")
-        try:
-            return self.client.viewpolicies.get()
-        except Exception:
-            log.exception("failed to get view policies")
-            raise
+
+        return self.client.viewpolicies.get()
+
 
     def create_view_policy(self, policy: Any) -> Any:
         """Create a view policy with the specified policy schema (refer to API documentation).
@@ -219,12 +205,10 @@ class VastAPIClient:
         """
         if not self.client:
             raise RuntimeError("VAST client not initialized")
-        try:
-            log.info("creating view policy: %s", policy)
-            return self.client.viewpolicies.post(**policy)
-        except Exception:
-            log.exception("failed to create view policy")
-            raise
+
+        log.info("creating view policy: %s", policy)
+        return self.client.viewpolicies.post(**policy)
+
 
     ### Quota Management ###
     def get_quotas(self, path: str = "") -> Any:
@@ -235,11 +219,9 @@ class VastAPIClient:
         """
         if not self.client:
             raise RuntimeError("VAST client not initialized")
-        try:
-            return self.client.quotas.get(path=path)
-        except Exception:
-            log.exception("failed to get quotas")
-            raise
+        
+        return self.client.quotas.get(path=path)
+
 
     def get_quota(self, quota_id: int) -> Any:
         """Return the quota with the specified `quota_id`.
@@ -249,11 +231,9 @@ class VastAPIClient:
         """
         if not self.client:
             raise RuntimeError("VAST client not initialized")
-        try:
-            return self.client.quotas[quota_id].get()
-        except Exception:
-            log.exception("failed to get quota %s", quota_id)
-            raise
+        
+        return self.client.quotas[quota_id].get()
+
 
     def create_quota(self, name: str, path: str, quota_gb: int) -> Any:
         """Create a quota with the specified `name`, `path`, and `quota_gb` size.
@@ -266,20 +246,18 @@ class VastAPIClient:
         """
         if not self.client:
             raise RuntimeError("VAST client not initialized")
-        try:
-            # Set quota
-            quota_bytes = quota_gb * 1024 * 1024 * 1024
-            quota_data = {
-                "name": f"{name}-quota",
-                "path": path,
-                "hard_limit": quota_bytes,
-                "soft_limit": int(quota_bytes * 0.8),
-            }
-            log.info("creating quota with data: %s", quota_data)
-            return self.client.quotas.post(**quota_data)
-        except Exception:
-            log.exception("failed to create quota")
-            raise
+
+        # Set quota
+        quota_bytes = quota_gb * 1024 * 1024 * 1024
+        quota_data = {
+            "name": f"{name}-quota",
+            "path": path,
+            "hard_limit": quota_bytes,
+            "soft_limit": int(quota_bytes * 0.8),
+        }
+        log.info("creating quota with data: %s", quota_data)
+        return self.client.quotas.post(**quota_data)
+
 
     def modify_quota(self, quota_id: int, quota_gb: int) -> Any:
         """Modify the quota with the specified `quota_id` to have the new `quota_gb` size.
@@ -291,18 +269,16 @@ class VastAPIClient:
         """
         if not self.client:
             raise RuntimeError("VAST client not initialized")
-        try:
-            # Update quota
-            quota_bytes = quota_gb * 1024 * 1024 * 1024
-            quota_data = {
-                "hard_limit": quota_bytes,
-                "soft_limit": int(quota_bytes * 0.8),
-            }
-            log.info("modifying quota %s with data: %s", quota_id, quota_data)
-            return self.client.quotas[quota_id].patch(**quota_data)
-        except Exception:
-            log.exception("failed to modify quota %s", quota_id)
-            raise
+
+        # Update quota
+        quota_bytes = quota_gb * 1024 * 1024 * 1024
+        quota_data = {
+            "hard_limit": quota_bytes,
+            "soft_limit": int(quota_bytes * 0.8),
+        }
+        log.info("modifying quota %s with data: %s", quota_id, quota_data)
+        return self.client.quotas[quota_id].patch(**quota_data)
+
 
     def delete_quota(self, quota_id: int) -> None:
         """Delete the quota with the specified `quota_id`.
@@ -311,12 +287,10 @@ class VastAPIClient:
         """
         if not self.client:
             raise RuntimeError("VAST client not initialized")
-        try:
-            log.info("deleting quota %s", quota_id)
-            self.client.quotas[quota_id].delete()
-        except Exception:
-            log.exception("failed to delete quota %s", quota_id)
-            raise
+        
+        log.info("deleting quota %s", quota_id)
+        self.client.quotas[quota_id].delete()
+
 
     ### Research Drive Handlers ###
     def create_research_drive(self, name: str, quota_gb: int, group_prefix: str, policy_id: int | None, create_dir: bool = True):
@@ -332,60 +306,57 @@ class VastAPIClient:
         """
         if not self.client:
             raise RuntimeError("VAST client not initialized")
-        try:
-            # Create the view with the default SMB policy
-            log.info("creating research drive view for %s", name)
-            view = self.create_view(
-                path=f"/{name}",
-                policy_id=policy_id,
-                create_dir=create_dir,
-                protocols=[ViewAccessProtocol.SMB],
-                smb_share_name=name,
-            )
-            view_id = view.get("id")
-            if not view_id:
-                raise RuntimeError("could not determine created view id")
 
-            # Set ACLs on the view
-            acl_params = {
-                "share_acl": {
-                    "enabled": True,
-                    "acl": [
-                        {
-                            "fqdn": "UoA.auckland.ac.nz",
-                            "name": f"{group_prefix}_ro.eresearch",
-                            "perm": "READ",
-                            "grantee": "groups",
-                        },
-                        {
-                            "fqdn": "UoA.auckland.ac.nz",
-                            "name": f"{group_prefix}_rw.eresearch",
-                            "perm": "CHANGE",
-                            "grantee": "groups",
-                        },
-                        {
-                            "fqdn": "UoA.auckland.ac.nz",
-                            "name": f"{group_prefix}_adm.eresearch",
-                            "perm": "FULL",
-                            "grantee": "groups",
-                        },
-                    ],
-                }
+        # Create the view with the default SMB policy
+        log.info("creating research drive view for %s", name)
+        view = self.create_view(
+            path=f"/{name}",
+            policy_id=policy_id,
+            create_dir=create_dir,
+            protocols=[ViewAccessProtocol.SMB],
+            smb_share_name=name,
+        )
+        view_id = view.get("id")
+        if not view_id:
+            raise RuntimeError("could not determine created view id")
+
+        # Set ACLs on the view
+        acl_params = {
+            "share_acl": {
+                "enabled": True,
+                "acl": [
+                    {
+                        "fqdn": "UoA.auckland.ac.nz",
+                        "name": f"{group_prefix}_ro.eresearch",
+                        "perm": "READ",
+                        "grantee": "groups",
+                    },
+                    {
+                        "fqdn": "UoA.auckland.ac.nz",
+                        "name": f"{group_prefix}_rw.eresearch",
+                        "perm": "CHANGE",
+                        "grantee": "groups",
+                    },
+                    {
+                        "fqdn": "UoA.auckland.ac.nz",
+                        "name": f"{group_prefix}_adm.eresearch",
+                        "perm": "FULL",
+                        "grantee": "groups",
+                    },
+                ],
             }
-            log.info("setting ACLs on view %s with params: %s", view_id, acl_params)
-            self.update_view(view_id=view_id, params=acl_params)
+        }
+        log.info("setting ACLs on view %s with params: %s", view_id, acl_params)
+        self.update_view(view_id=view_id, params=acl_params)
 
-            # Set quota on the view's path
-            log.info(
-                "setting quota on research drive %s with size %s GB", name, quota_gb
-            )
-            self.create_quota(name=f"{name}", path=f"/{name}", quota_gb=quota_gb)
+        # Set quota on the view's path
+        log.info(
+            "setting quota on research drive %s with size %s GB", name, quota_gb
+        )
+        self.create_quota(name=f"{name}", path=f"/{name}", quota_gb=quota_gb)
 
-            return {"status": "success", "result": f"created _drive_for_{name}"}
+        return {"status": "success", "result": f"created _drive_for_{name}"}
 
-        except Exception:
-            log.exception("failed to create research drive")
-            raise
 
     def resize_research_drive(self, name: str, quota_gb: int):
         """Resize the research drive with the specified `name` to have the new `quota_gb` size.
@@ -397,34 +368,32 @@ class VastAPIClient:
         """
         if not self.client:
             raise RuntimeError("VAST client not initialized")
-        try:
-            # Get the quota for the view's path
-            quotas = self.get_quotas(path=f"/{name}")
-            if not quotas:
-                raise RuntimeError(f"no quotas found for path /{name}")
 
-            quota = quotas[0]  # Assuming one quota per research drive path
-            quota_id = quota.get("id") if isinstance(quota, dict) else None
-            if not quota_id:
-                raise RuntimeError(f"could not determine quota id for path /{name}")
+        # Get the quota for the view's path
+        quotas = self.get_quotas(path=f"/{name}")
+        if not quotas:
+            raise RuntimeError(f"no quotas found for path /{name}")
 
-            # Update the quota with the new size
-            log.info(
-                "resizing research drive %s by modifying quota %s to size %s GB",
-                name,
-                quota_id,
-                quota_gb,
-            )
-            quota = self.modify_quota(quota_id=quota_id, quota_gb=quota_gb)
-            return {
-                "status": "success",
-                "folder": name,
-                "used_gb": quota.get("used_capacity") / (1024 * 1024 * 1024),
-                "quota_gb": quota.get("hard_limit") / (1024 * 1024 * 1024),
-            }
-        except Exception:
-            log.exception("failed to resize research drive %s", name)
-            raise
+        quota = quotas[0]  # Assuming one quota per research drive path
+        quota_id = quota.get("id") if isinstance(quota, dict) else None
+        if not quota_id:
+            raise RuntimeError(f"could not determine quota id for path /{name}")
+
+        # Update the quota with the new size
+        log.info(
+            "resizing research drive %s by modifying quota %s to size %s GB",
+            name,
+            quota_id,
+            quota_gb,
+        )
+        quota = self.modify_quota(quota_id=quota_id, quota_gb=quota_gb)
+        return {
+            "status": "success",
+            "folder": name,
+            "used_gb": quota.get("used_capacity") / (1024 * 1024 * 1024),
+            "quota_gb": quota.get("hard_limit") / (1024 * 1024 * 1024),
+        }
+
 
     def check_research_drive(self, name: str) -> Any:
         """Return statistics on research drive allocation and current use
@@ -433,17 +402,14 @@ class VastAPIClient:
         """
         if not self.client:
             raise RuntimeError("VAST client not initialized")
-        try:
-            quotas = self.get_quotas(path=f"/{name}")
-            if not quotas:
-                raise RuntimeError(f"no quotas found for path /{name}")
-            quota = quotas[0]  # Assuming one quota per research drive path
-            return {
-                "status": "success",
-                "folder": name,
-                "used_gb": quota.get("used_capacity") / (1024 * 1024 * 1024),
-                "quota_gb": quota.get("hard_limit") / (1024 * 1024 * 1024),
-            }
-        except Exception:
-            log.exception("failed to check research drive %s", name)
-            raise
+
+        quotas = self.get_quotas(path=f"/{name}")
+        if not quotas:
+            raise RuntimeError(f"no quotas found for path /{name}")
+        quota = quotas[0]  # Assuming one quota per research drive path
+        return {
+            "status": "success",
+            "folder": name,
+            "used_gb": quota.get("used_capacity") / (1024 * 1024 * 1024),
+            "quota_gb": quota.get("hard_limit") / (1024 * 1024 * 1024),
+        }

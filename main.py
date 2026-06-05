@@ -50,9 +50,6 @@ def main() -> None:
                 )
                 created_views.append(drive)
             else:
-                logging.info(
-                    f"Creating view for research drive {drive.name} with quota {drive.allocated_gb} GB."
-                )
                 vast.create_research_drive(
                     name=drive.name,
                     quota_gb=int(drive.allocated_gb),
@@ -61,15 +58,17 @@ def main() -> None:
                     create_dir=False,  # Don't create the directory since it should already exist once the Unifiles migration is complete
                 )
                 created_views.append(drive)
+        except vastpy.RESTFailure as e:
+            if e.status == 409:
+                logging.info(
+                    f"Conflict for research drive {drive.name}. Skipping. Details: {e}"
+                )
+                skipped_views.append({"drive": drive, "error": e})
+            else:
+                raise
         except Exception as e:
             logging.error(f"Error creating view for research drive {drive.name}: {e}")
-            if e.args and isinstance(e.args[0], vastpy.RESTFailure) and e.args[0].status == 409:
-                logging.info(
-                    f"View for research drive {drive.name} already exists. Skipping."
-                )
-                skipped_views.append(drive)
-            else:
-                error_views.append({"drive": drive, "error": e})
+            error_views.append({"drive": drive, "error": e})
 
     # Final summary of results
     logging.info("Finished processing research drives.")
@@ -91,8 +90,8 @@ def main() -> None:
                 f.write(f"{drive.name}\n")
 
         with open("output/skipped_views.txt", "w") as f:
-            for drive in skipped_views:
-                f.write(f"{drive.name}\n")
+            for item in skipped_views:
+                f.write(f"{item['drive'].name}: {item['error']}\n")
 
         with open("output/error_views.txt", "w") as f:
             for item in error_views:
