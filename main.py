@@ -27,21 +27,45 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Create Vast views for research drives migrated from Unifiles."
     )
+    # add csv file argument for list of drives to process
+    parser.add_argument(
+        "--drives-file",
+        type=str,
+        required=True,
+        help="Path to CSV file containing list of drive names to process (one drive name per line). E.g., 'C:\\path\\to\\drives_to_process.csv'.",
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Fetch drives and check for existing views, but do not create any views in Vast.",
+        help="Fetch drive details and check for existing views, but do not create any views in Vast.",
     )
     args = parser.parse_args()
 
     if args.dry_run:
         logging.info("Dry run mode enabled — no views will be created.")
 
+    # Track success, skipped and error cases for reporting at the end
+    created_views = []
+    skipped_views = []
+    error_views = []
+    
     # Retrieve research drives from ProjectDB
     with ProjectDBAPIClient(
         "https://" + PROJECT_DB_API_HOST, PROJECT_DB_API_KEY
     ) as project_db:
-        drives = project_db.get_research_drives()
+        # Read list of drives to process from csv file
+        with open(args.drives_file, "r") as f:
+            drive_names_to_process = {line.strip() for line in f if line.strip()}
+        logging.info(f"Loaded {len(drive_names_to_process)} drive names to process from {args.drives_file}.")
+
+        # Fetch drive information for each drive name
+        drives = []
+        for drive_name in drive_names_to_process:
+            try:
+                drive = project_db.get_research_drive_by_name(drive_name)
+                drives.append(drive)
+            except Exception as e:
+                error_views.append({"drive": drive_name, "error": e})
         logging.info(f"Retrieved {len(drives)} research drives from ProjectDB.")
 
         # TODO: Fetch information about archived data on tape, and adjust quotas accordingly.
@@ -49,11 +73,6 @@ def main() -> None:
         # Initialize Vast API client
         vast = VastAPIClient(VAST_HOST, VAST_TOKEN)
         logging.info("Initialized Vast API client: %s", str(vast))
-
-        # track how many views we create vs skip due to already existing
-        created_views = []
-        skipped_views = []
-        error_views = []
 
         # Get all existing views in Vast to check for duplicates before creating new ones
         existing_views = vast.get_views()

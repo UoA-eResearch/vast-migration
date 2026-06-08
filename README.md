@@ -1,5 +1,10 @@
 # vast-migration
-Script for creating views in Vast in preparation for data migration from Unifiles
+Script for creating views in Vast as part of data migration from Unifiles.
+
+Drives to be processed must be provided in a CSV file containing the names of the research drives (e.g. `ressci202300019-testresearchdrive`). This allows us to process drives in batches rather than all at once.
+
+The script will read the list of drive names from the CSV, fetch the corresponding drive info and group memberships from the Centre for eResearch ProjectDB API, and then create views in Vast with the appropriate ACLs and quotas. It also has a dry-run mode to verify what it would do without making any changes in Vast.
+
 
 ## Setup
 

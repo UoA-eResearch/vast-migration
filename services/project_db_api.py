@@ -21,14 +21,19 @@ class ProjectDBAPIClient:
             timeout=30.0,
         )
 
-    def get_research_drives(self) -> list[ResearchDrive]:
-        """Return all Unifiles research drives with their associated quotas."""
+    def get_research_drive_by_name(self, drive_name: str) -> ResearchDrive:
+        """Return a research drive by its name."""
         try:
-            response = self._client.get("/researchdrive")
+            response = self._client.get(f"/researchdrive/{drive_name}")
             response.raise_for_status()
-            return [ResearchDrive.model_validate(drive) for drive in response.json()]
+            drives = response.json()
+            if not drives:
+                raise ValueError(f"No research drive found with name '{drive_name}'")
+            return ResearchDrive.model_validate(drives[0])
         except httpx.HTTPError as e:
-            logging.error(f"Error fetching research drives from ProjectDB: {e}")
+            logging.error(f"Error fetching research drive '{drive_name}' from ProjectDB: {e}")
+            raise
+        except Exception as e:
             raise
 
     def get_drive_groups(self, drive_id: int) -> ResearchDriveGroups:

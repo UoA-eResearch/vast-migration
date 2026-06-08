@@ -222,5 +222,6 @@ __marimo__/
 # VS Code
 .vscode/
 
-# Output files
+# Input and Output files
+input/
 output/
