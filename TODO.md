@@ -1,6 +1,5 @@
 # TO DO
 
-- Read in list of drives to process from csv file instead of fetching from ProjectDB (since we will not want to process all drives at once)
 - Read in info about archived data and apply additional space to drive quotas as needed
 - May need to split out the `create_research_drive` function into separate steps so that we can handle error cases more gracefully (e.g. if view already exists, we can still apply/modify the ACLs and quota)
 - Add tests for the main script (at least some basic integration tests that mock the Vast and ProjectDB APIs)
