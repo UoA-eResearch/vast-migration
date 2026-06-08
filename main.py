@@ -3,7 +3,19 @@ import logging
 
 import vastpy
 
-from config import PROJECT_DB_API_HOST, PROJECT_DB_API_KEY, VAST_HOST, VAST_TOKEN, LOG_LEVEL, WRITE_OUTPUT_FILES
+from config import (
+    LOG_LEVEL,
+    PROJECT_DB_API_HOST,
+    PROJECT_DB_API_KEY,
+    RESEARCH_DRIVES_ROOT,
+    VAST_HOST,
+    VAST_TOKEN,
+    WRITE_OUTPUT_FILES,
+    USE_TEST_DRIVES,
+    USE_TEST_GROUPS,
+)
+from models.research_drive import ResearchDrive
+from models.research_drive_groups import ResearchDriveGroups
 from services.project_db_api import ProjectDBAPIClient
 from services.vast_api import VastAPIClient
 
@@ -31,71 +43,115 @@ def main() -> None:
         drives = project_db.get_research_drives()
         logging.info(f"Retrieved {len(drives)} research drives from ProjectDB.")
 
-    # TODO: Fetch information about archived data on tape, and adjust quotas accordingly.
+        # TODO: Fetch information about archived data on tape, and adjust quotas accordingly.
 
-    # Initialize Vast API client
-    vast = VastAPIClient(VAST_HOST, VAST_TOKEN)
-    logging.info("Initialized Vast API client: %s", str(vast))
-    # track how many views we create vs skip due to already existing
-    created_views = []
-    skipped_views = []
-    error_views = []
+        # Initialize Vast API client
+        vast = VastAPIClient(VAST_HOST, VAST_TOKEN)
+        logging.info("Initialized Vast API client: %s", str(vast))
 
-    # For each research drive, create a matching view in Vast and apply the quota
-    for drive in drives:
-        try:
-            if args.dry_run:
-                logging.info(
-                    f"[DRY RUN] Would create view for research drive {drive.name} with quota {drive.allocated_gb} GB."
-                )
-                created_views.append(drive)
-            else:
-                vast.create_research_drive(
-                    name=drive.name,
-                    quota_gb=int(drive.allocated_gb),
-                    group_prefix="unifiles",
-                    policy_id=None,  # TODO: Will require a policy ID in Production, but can be left as None for now (use default policy)
-                    create_dir=False,  # Don't create the directory since it should already exist once the Unifiles migration is complete
-                )
-                created_views.append(drive)
-        except vastpy.RESTFailure as e:
-            if e.status == 409:
-                logging.info(
-                    f"Conflict for research drive {drive.name}. Skipping. Details: {e}"
-                )
-                skipped_views.append({"drive": drive, "error": e})
-            else:
-                raise
-        except Exception as e:
-            logging.error(f"Error creating view for research drive {drive.name}: {e}")
-            error_views.append({"drive": drive, "error": e})
+        # track how many views we create vs skip due to already existing
+        created_views = []
+        skipped_views = []
+        error_views = []
 
-    # Final summary of results
-    logging.info("Finished processing research drives.")
-    if args.dry_run:
-        logging.info(
-            f"[DRY RUN] Would have created views for {len(created_views)} drives."
-        )
-    else:
-        logging.info(f"Created views for {len(created_views)} drives.")
-    logging.info(f"Skipped views for {len(skipped_views)} drives (already exist).")
-    logging.info(f"Error occurred with {len(error_views)} drives.")
+        # Get all existing views in Vast to check for duplicates before creating new ones
+        existing_views = vast.get_views()
+        logging.info(f"Retrieved {len(existing_views)} existing views from Vast.")
 
-    if WRITE_OUTPUT_FILES:
-        logging.info("Writing results to output files...")
-        import os
-        os.makedirs("output", exist_ok=True)
-        with open("output/created_views.txt", "w") as f:
-            for drive in created_views:
-                f.write(f"{drive.name}\n")
+        ######## TODO: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
+        if USE_TEST_DRIVES:
+            logging.info("Using test data for research drives and groups.")
+            drives = [
+                ResearchDrive(id=1, name="ressci202300019-testresearchdrive", allocated_gb=10),
+                ResearchDrive(id=2, name="test-smb-view", allocated_gb=40),
+                ResearchDrive(id=3, name="test-view-8jun26", allocated_gb=20),
+                ResearchDrive(id=6, name="ressci201800005-dysphagia", allocated_gb=30)
+            ]
+        ######## END: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
 
-        with open("output/skipped_views.txt", "w") as f:
-            for item in skipped_views:
-                f.write(f"{item['drive'].name}: {item['error']}\n")
+        # For each research drive, create a matching view in Vast and apply the quota
+        for drive in drives:
+            try:
+                ######## TODO: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
+                if USE_TEST_GROUPS:
+                    drive_groups = ResearchDriveGroups(
+                        adm_group="app_storage_test_admin",
+                        ro_group="app_storage_test_ro",
+                        rw_group="app_storage_test_rw",
+                        t_group="",
+                    )
+                else:
+                    ######## END: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
+                    # Get the drive group information from ProjectDB
+                    drive_groups = project_db.get_drive_groups(drive_id=drive.id)
+                    
+            except Exception as e:
+                logging.error(f"Error fetching drive groups for research drive {drive.name}: {e}")
+                error_views.append({"drive": drive.name, "error": e})
+                continue
 
-        with open("output/error_views.txt", "w") as f:
-            for item in error_views:
-                f.write(f"{item['drive'].name}: {item['error']}\n")
+            try:
+                # TODO: for testing we are checking both path options - for production we should only need to check the /{RESEARCH_DRIVES_ROOT}/{drive.name} path since that's where the drive views will be created
+                if any(view.path == f"/{RESEARCH_DRIVES_ROOT}/{drive.name}" for view in existing_views) or any(view.path == f"/{drive.name}" for view in existing_views):
+                    logging.info(
+                        f"View for research drive {drive.name} already exists. Skipping."
+                    )
+                    skipped_views.append({"drive": drive.name, "details": "Found an existing view in Vast."})
+                    continue
+
+                if args.dry_run:
+                    logging.info(
+                        f"[DRY RUN] Would create view for research drive {drive.name} with quota {drive.allocated_gb} GB."
+                    )
+                    created_views.append(drive)
+                else:
+                    vast.create_research_drive(
+                        name=drive.name,
+                        quota_gb=int(drive.allocated_gb),
+                        groups=drive_groups,
+                        policy_id=None,  # TODO: Will require a policy ID in Production, but can be left as None for now (use default policy)
+                        create_dir=False,  # Don't create the directory since it should already exist once the Unifiles migration is complete
+                    )
+                    created_views.append(drive)
+            except vastpy.RESTFailure as e:
+                if e.status == 409:
+                    logging.info(
+                        f"Conflict for research drive {drive.name}. Skipping. Details: {e}"
+                    )
+                    skipped_views.append({"drive": drive.name, "details": e})
+                else:
+                    logging.error(f"HTTP error for research drive {drive.name}: {e}")
+                    error_views.append({"drive": drive.name, "error": e})
+            except Exception as e:
+                logging.error(f"Error creating view for research drive {drive.name}: {e}")
+                error_views.append({"drive": drive.name, "error": e})
+
+        # Final summary of results
+        logging.info("Finished processing research drives.")
+        if args.dry_run:
+            logging.info(
+                f"[DRY RUN] Would have created views for {len(created_views)} drives."
+            )
+        else:
+            logging.info(f"Created views for {len(created_views)} drives.")
+        logging.info(f"Skipped views for {len(skipped_views)} drives (already exist).")
+        logging.info(f"Error occurred with {len(error_views)} drives.")
+
+        if WRITE_OUTPUT_FILES:
+            logging.info("Writing results to output files...")
+            import os
+            os.makedirs("output", exist_ok=True)
+            with open("output/created_views.txt", "w") as f:
+                for drive in created_views:
+                    f.write(f"{drive.name}\n")
+
+            with open("output/skipped_views.txt", "w") as f:
+                for item in skipped_views:
+                    f.write(f"{item['drive']}: {item['details']}\n")
+
+            with open("output/error_views.txt", "w") as f:
+                for item in error_views:
+                    f.write(f"{item['drive']}: {item['error']}\n")
 
 if __name__ == "__main__":
     main()
