@@ -54,6 +54,7 @@ Fill in the values for each environment. These files are git-ignored — never c
 | `PROJECT_DB_API_KEY` | API key for the ProjectDB API |
 | `LOG_LEVEL` | (optional) Logging level (e.g. DEBUG, INFO, WARNING) |
 | `WRITE_OUTPUT_FILES` | (optional) Whether to write output files with the results (true/false) |
+| `RESEARCH_DRIVES_ROOT` | Root directory in Vast where the views will be created (default: "test-research-root") |
 
 ### 2. Run the script
 

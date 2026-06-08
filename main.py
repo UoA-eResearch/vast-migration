@@ -8,11 +8,11 @@ from config import (
     PROJECT_DB_API_HOST,
     PROJECT_DB_API_KEY,
     RESEARCH_DRIVES_ROOT,
+    USE_TEST_DRIVES,
+    USE_TEST_GROUPS,
     VAST_HOST,
     VAST_TOKEN,
     WRITE_OUTPUT_FILES,
-    USE_TEST_DRIVES,
-    USE_TEST_GROUPS,
 )
 from models.research_drive import ResearchDrive
 from models.research_drive_groups import ResearchDriveGroups
@@ -84,15 +84,17 @@ def main() -> None:
                     ######## END: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
                     # Get the drive group information from ProjectDB
                     drive_groups = project_db.get_drive_groups(drive_id=drive.id)
-                    
+
             except Exception as e:
                 logging.error(f"Error fetching drive groups for research drive {drive.name}: {e}")
                 error_views.append({"drive": drive.name, "error": e})
                 continue
 
             try:
-                # TODO: for testing we are checking both path options - for production we should only need to check the /{RESEARCH_DRIVES_ROOT}/{drive.name} path since that's where the drive views will be created
-                if any(view.path == f"/{RESEARCH_DRIVES_ROOT}/{drive.name}" for view in existing_views) or any(view.path == f"/{drive.name}" for view in existing_views):
+                # TODO: for testing we are checking both path options - for production we should only need to check the
+                # /{RESEARCH_DRIVES_ROOT}/{drive.name} path since that's where the drive views will be created
+                if any(view.path == f"/{RESEARCH_DRIVES_ROOT}/{drive.name}" for view in existing_views
+                       ) or any(view.path == f"/{drive.name}" for view in existing_views):
                     logging.info(
                         f"View for research drive {drive.name} already exists. Skipping."
                     )
@@ -101,7 +103,8 @@ def main() -> None:
 
                 if args.dry_run:
                     logging.info(
-                        f"[DRY RUN] Would create view for research drive {drive.name} with quota {drive.allocated_gb} GB."
+                        f"""[DRY RUN] Would create view for research drive
+                          {drive.name} with quota {drive.allocated_gb} GB."""
                     )
                     created_views.append(drive)
                 else:
@@ -109,8 +112,10 @@ def main() -> None:
                         name=drive.name,
                         quota_gb=int(drive.allocated_gb),
                         groups=drive_groups,
-                        policy_id=None,  # TODO: Will require a policy ID in Production, but can be left as None for now (use default policy)
-                        create_dir=False,  # Don't create the directory since it should already exist once the Unifiles migration is complete
+                        # TODO: Will require a policy ID in Production, but leave as None for now (use default policy)
+                        policy_id=None,
+                        # Don't create the directory since it should exist once the Unifiles migration is complete
+                        create_dir=False,
                     )
                     created_views.append(drive)
             except vastpy.RESTFailure as e:

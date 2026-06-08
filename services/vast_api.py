@@ -297,7 +297,14 @@ class VastAPIClient:
 
 
     ### Research Drive Handlers ###
-    def create_research_drive(self, name: str, quota_gb: int, groups: ResearchDriveGroups, policy_id: int | None, create_dir: bool = True):
+    def create_research_drive(
+            self,
+            name: str,
+            quota_gb: int,
+            groups: ResearchDriveGroups,
+            policy_id: int | None,
+            create_dir: bool = True
+        ):
         """Create an SMB view for a research drive using the default SMB policy.
 
         Once the view is created, this handler also adds the appropriate ACLs,
