@@ -9,3 +9,4 @@ class ResearchDrive(BaseModel):
     id: int
     name: str
     allocated_gb: float
+    used_gb: float

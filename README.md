@@ -52,9 +52,9 @@ Fill in the values for each environment. These files are git-ignored — never c
 | `VAST_TOKEN` | API token for Vast Data |
 | `PROJECT_DB_API_HOST` | Hostname of the ProjectDB API |
 | `PROJECT_DB_API_KEY` | API key for the ProjectDB API |
+| `RESEARCH_DRIVES_ROOT` | Root directory in Vast where the views will be created |
 | `LOG_LEVEL` | (optional) Logging level (e.g. DEBUG, INFO, WARNING) |
 | `WRITE_OUTPUT_FILES` | (optional) Whether to write output files with the results (true/false) |
-| `RESEARCH_DRIVES_ROOT` | Root directory in Vast where the views will be created (default: "test-research-root") |
 
 ### 2. Run the script
 

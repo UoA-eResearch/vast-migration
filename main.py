@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 
 import vastpy
 
@@ -60,28 +61,28 @@ def main() -> None:
 
         ######## TODO: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
         if USE_TEST_DRIVES:
-            logging.info("Using test data for research drives and groups.")
+            logging.info("Using test data for research drives.")
             drives = [
-                ResearchDrive(id=1, name="ressci202300019-testresearchdrive", allocated_gb=10),
-                ResearchDrive(id=2, name="test-smb-view", allocated_gb=40),
-                ResearchDrive(id=3, name="test-view-8jun26", allocated_gb=20),
-                ResearchDrive(id=6, name="ressci201800005-dysphagia", allocated_gb=30)
+                ResearchDrive(id=1, name="ressci202300019-testresearchdrive", allocated_gb=10, used_gb=5),
+                ResearchDrive(id=2, name="test-smb-view", allocated_gb=40, used_gb=20),
+                ResearchDrive(id=3, name="test-view-8jun26", allocated_gb=20, used_gb=10),
+                ResearchDrive(id=6, name="ressci201800005-dysphagia", allocated_gb=30, used_gb=15),
             ]
+        ######## END: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
+
+        ######## TODO: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
+        drive_groups = ResearchDriveGroups(
+            adm_group="app_storage_test_admin",
+            ro_group="app_storage_test_ro",
+            rw_group="app_storage_test_rw",
+            t_group="",
+        )
         ######## END: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
 
         # For each research drive, create a matching view in Vast and apply the quota
         for drive in drives:
             try:
-                ######## TODO: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
-                if USE_TEST_GROUPS:
-                    drive_groups = ResearchDriveGroups(
-                        adm_group="app_storage_test_admin",
-                        ro_group="app_storage_test_ro",
-                        rw_group="app_storage_test_rw",
-                        t_group="",
-                    )
-                else:
-                    ######## END: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
+                if not USE_TEST_GROUPS:
                     # Get the drive group information from ProjectDB
                     drive_groups = project_db.get_drive_groups(drive_id=drive.id)
 
@@ -103,21 +104,20 @@ def main() -> None:
 
                 if args.dry_run:
                     logging.info(
-                        f"""[DRY RUN] Would create view for research drive
-                          {drive.name} with quota {drive.allocated_gb} GB."""
+                        f"[DRY RUN] Would create view for drive {drive.name} with quota {drive.allocated_gb} GB."
                     )
-                    created_views.append(drive)
+                    created_views.append({"drive": drive.name, "quota_gb": drive.allocated_gb})
                 else:
                     vast.create_research_drive(
                         name=drive.name,
-                        quota_gb=int(drive.allocated_gb),
+                        quota_gb=round(drive.allocated_gb),
                         groups=drive_groups,
                         # TODO: Will require a policy ID in Production, but leave as None for now (use default policy)
                         policy_id=None,
                         # Don't create the directory since it should exist once the Unifiles migration is complete
                         create_dir=False,
                     )
-                    created_views.append(drive)
+                    created_views.append({"drive": drive.name, "quota_gb": drive.allocated_gb})
             except vastpy.RESTFailure as e:
                 if e.status == 409:
                     logging.info(
@@ -144,11 +144,10 @@ def main() -> None:
 
         if WRITE_OUTPUT_FILES:
             logging.info("Writing results to output files...")
-            import os
             os.makedirs("output", exist_ok=True)
             with open("output/created_views.txt", "w") as f:
                 for drive in created_views:
-                    f.write(f"{drive.name}\n")
+                    f.write(f"{drive['drive']}: {drive['quota_gb']} GB\n")
 
             with open("output/skipped_views.txt", "w") as f:
                 for item in skipped_views:

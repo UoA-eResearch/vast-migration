@@ -12,8 +12,9 @@ VAST_HOST: str = _require("VAST_HOST")
 VAST_TOKEN: str = _require("VAST_TOKEN")
 PROJECT_DB_API_HOST: str = _require("PROJECT_DB_API_HOST")
 PROJECT_DB_API_KEY: str = _require("PROJECT_DB_API_KEY")
+RESEARCH_DRIVES_ROOT: str = _require("RESEARCH_DRIVES_ROOT") # Root level directory in Vast
+
 LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 WRITE_OUTPUT_FILES: bool = os.getenv("WRITE_OUTPUT_FILES", "false").lower() == "true"
-RESEARCH_DRIVES_ROOT: str = os.getenv("RESEARCH_DRIVES_ROOT", "test-research-root")
-USE_TEST_DRIVES: bool = os.getenv("USE_TEST_DRIVES", "true").lower() == "true"
-USE_TEST_GROUPS: bool = os.getenv("USE_TEST_GROUPS", "true").lower() == "true"
+USE_TEST_DRIVES: bool = os.getenv("USE_TEST_DRIVES", "false").lower() == "true"
+USE_TEST_GROUPS: bool = os.getenv("USE_TEST_GROUPS", "false").lower() == "true"

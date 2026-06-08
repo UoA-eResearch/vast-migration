@@ -18,6 +18,7 @@ class ProjectDBAPIClient:
                 "Accept": "application/json",
                 "apikey": api_key,
             },
+            timeout=30.0,
         )
 
     def get_research_drives(self) -> list[ResearchDrive]:
