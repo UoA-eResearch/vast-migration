@@ -3,6 +3,7 @@ import logging
 import httpx
 
 from models.research_drive import ResearchDrive
+from models.research_drive_groups import ResearchDriveGroups
 
 
 class ProjectDBAPIClient:
@@ -24,9 +25,19 @@ class ProjectDBAPIClient:
         try:
             response = self._client.get("/researchdrive")
             response.raise_for_status()
-            return [ResearchDrive(**drive) for drive in response.json()]
+            return [ResearchDrive.model_validate(drive) for drive in response.json()]
         except httpx.HTTPError as e:
             logging.error(f"Error fetching research drives from ProjectDB: {e}")
+            raise
+
+    def get_drive_groups(self, drive_id: int) -> ResearchDriveGroups:
+        """Return the group information for a given research drive."""
+        try:
+            response = self._client.get(f"/researchdrive/{drive_id}/group")
+            response.raise_for_status()
+            return ResearchDriveGroups.model_validate(response.json())
+        except httpx.HTTPError as e:
+            logging.error(f"Error fetching drive groups from ProjectDB for drive ID {drive_id}: {e}")
             raise
 
     def close(self) -> None:
