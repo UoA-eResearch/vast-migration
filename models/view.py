@@ -1,11 +1,28 @@
 from pydantic import BaseModel
 
-from models.quota import Quota
+
+class ShareACL(BaseModel):
+    fqdn: str
+    name: str
+    perm: str
+    grantee: str
+
+
+class ShareACLConfig(BaseModel):
+    acl: list[ShareACL]
+    enabled: bool
 
 
 class View(BaseModel):
     """Represents a Vast Data view."""
 
-    name: str
+    model_config = {"extra": "ignore"}
+
+    id: int | None = None
+    name: str | None = None
     path: str
-    #TODO:
+    policy: str | None = None
+    policy_id: int | None = None
+    protocols: list[str] = []
+    share: str | None = None
+    share_acl: ShareACLConfig | None = None
