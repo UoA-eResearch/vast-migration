@@ -1,4 +1,5 @@
 import argparse
+import csv
 import logging
 import os
 
@@ -35,6 +36,12 @@ def main() -> None:
         help="Path to CSV file containing list of drive names to process (one drive name per line). E.g., 'C:\\path\\to\\drives_to_process.csv'.",
     )
     parser.add_argument(
+        "--archived-data-file",
+        type=str,
+        required=True,
+        help="Path to CSV file containing information about size of archived data on tape. E.g., 'C:\\path\\to\\drives-archived-data.csv'.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Fetch drive details and check for existing views, but do not create any views in Vast.",
@@ -42,24 +49,39 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.dry_run:
-        logging.info("Dry run mode enabled — no views will be created.")
+        logging.info("[DRY RUN] Dry run mode enabled — no views will be created.")
 
     # Track success, skipped and error cases for reporting at the end
     created_views = []
     skipped_views = []
     error_views = []
     
+    # Read list of drives to process from csv file
+    with open(args.drives_file, "r", encoding="utf-8") as f:
+        drive_names_to_process = {line.strip() for line in f if line.strip()}
+    logging.info(f"Loaded {len(drive_names_to_process)} drive names to process from {args.drives_file}.")
+
+    # Read information about archived data on tape, and adjust quotas accordingly.
+    # Use the ProjectDB quota + premigrated_used + migrated_used to determine the total required quota for each
+    # drive, and update the drive allocated_gb value accordingly before creating the view in Vast.
+    with open(args.archived_data_file, "r", encoding="utf-8") as f:
+        csv_reader = csv.DictReader(f)
+        archived_data = {}
+        for line in csv_reader:
+            drive_name = line["research_project"]
+            premigrated_used_kb = float(line["premigrated_used_kb"].replace(",", ""))
+            migrated_used_kb = float(line["migrated_used_kb"].replace(",", ""))
+            archived_data[drive_name] = {
+                "total_archived_used_gb": (premigrated_used_kb + migrated_used_kb) / 1e6
+            }
+    logging.info(f"Loaded archived data info from {args.archived_data_file}.")
+
     # Retrieve research drives from ProjectDB
     with ProjectDBAPIClient(
         "https://" + PROJECT_DB_API_HOST, PROJECT_DB_API_KEY
     ) as project_db:
-        # Read list of drives to process from csv file
-        with open(args.drives_file, "r") as f:
-            drive_names_to_process = {line.strip() for line in f if line.strip()}
-        logging.info(f"Loaded {len(drive_names_to_process)} drive names to process from {args.drives_file}.")
-
         # Fetch drive information for each drive name
-        drives = []
+        drives: list[ResearchDrive] = []
         for drive_name in drive_names_to_process:
             try:
                 drive = project_db.get_research_drive_by_name(drive_name)
@@ -68,7 +90,17 @@ def main() -> None:
                 error_views.append({"drive": drive_name, "error": e})
         logging.info(f"Retrieved {len(drives)} research drives from ProjectDB.")
 
-        # TODO: Fetch information about archived data on tape, and adjust quotas accordingly.
+        for drive in drives:
+            if drive.name in archived_data:
+                total_archived_used_gb = archived_data[drive.name]["total_archived_used_gb"]
+                original_allocated_gb = drive.allocated_gb
+                if total_archived_used_gb > 0:
+                    drive.allocated_gb += total_archived_used_gb
+                logging.info(
+                    f"Adjusted allocated GB for drive {drive.name} from {original_allocated_gb} GB to {drive.allocated_gb} GB based on archived data usage of {total_archived_used_gb} GB."
+                )
+            else:
+                logging.warning(f"No archived data information found for drive {drive.name}. Using original allocated GB of {drive.allocated_gb} GB.")
 
         # Initialize Vast API client
         vast = VastAPIClient(VAST_HOST, VAST_TOKEN)
