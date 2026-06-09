@@ -59,7 +59,7 @@ class VastAPIClient:
 
         # Initialize the underlying client.
         self.client = VASTClient(address=address, token=token)
-        log.info("initialized VAST client for %s", address)
+        log.info("Initialized VAST client for %s", address)
 
 
     ### View Management ###

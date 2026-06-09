@@ -10,7 +10,6 @@ from config import (
     PROJECT_DB_API_HOST,
     PROJECT_DB_API_KEY,
     RESEARCH_DRIVES_ROOT,
-    USE_TEST_DRIVES,
     USE_TEST_GROUPS,
     VAST_HOST,
     VAST_TOKEN,
@@ -96,30 +95,18 @@ def main() -> None:
                 original_allocated_gb = drive.allocated_gb
                 if total_archived_used_gb > 0:
                     drive.allocated_gb += total_archived_used_gb
-                logging.info(
-                    f"Adjusted allocated GB for drive {drive.name} from {original_allocated_gb} GB to {drive.allocated_gb} GB based on archived data usage of {total_archived_used_gb} GB."
-                )
+                    logging.info(
+                        f"Adjusted allocated GB for drive {drive.name} from {original_allocated_gb} GB to {drive.allocated_gb} GB based on archived data usage of {total_archived_used_gb} GB."
+                    )
             else:
                 logging.warning(f"No archived data information found for drive {drive.name}. Using original allocated GB of {drive.allocated_gb} GB.")
 
         # Initialize Vast API client
         vast = VastAPIClient(VAST_HOST, VAST_TOKEN)
-        logging.info("Initialized Vast API client: %s", str(vast))
 
         # Get all existing views in Vast to check for duplicates before creating new ones
         existing_views = vast.get_views()
         logging.info(f"Retrieved {len(existing_views)} existing views from Vast.")
-
-        ######## TODO: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
-        if USE_TEST_DRIVES:
-            logging.info("Using test data for research drives.")
-            drives = [
-                ResearchDrive(id=1, name="ressci202300019-testresearchdrive", allocated_gb=10, used_gb=5),
-                ResearchDrive(id=2, name="test-smb-view", allocated_gb=40, used_gb=20),
-                ResearchDrive(id=3, name="test-view-8jun26", allocated_gb=20, used_gb=10),
-                ResearchDrive(id=6, name="ressci201800005-dysphagia", allocated_gb=30, used_gb=15),
-            ]
-        ######## END: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
 
         ######## TODO: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
         drive_groups = ResearchDriveGroups(
@@ -157,7 +144,7 @@ def main() -> None:
                     logging.info(
                         f"[DRY RUN] Would create view for drive {drive.name} with quota {drive.allocated_gb} GB."
                     )
-                    created_views.append({"drive": drive.name, "quota_gb": drive.allocated_gb})
+                    created_views.append({"drive": drive.name, "drive_id": drive.id, "quota_gb": drive.allocated_gb})
                 else:
                     vast.create_research_drive(
                         name=drive.name,
@@ -168,7 +155,7 @@ def main() -> None:
                         # Don't create the directory since it should exist once the Unifiles migration is complete
                         create_dir=False,
                     )
-                    created_views.append({"drive": drive.name, "quota_gb": drive.allocated_gb})
+                    created_views.append({"drive": drive.name, "drive_id": drive.id, "quota_gb": drive.allocated_gb})
             except vastpy.RESTFailure as e:
                 if e.status == 409:
                     logging.info(
@@ -181,6 +168,23 @@ def main() -> None:
             except Exception as e:
                 logging.error(f"Error creating view for research drive {drive.name}: {e}")
                 error_views.append({"drive": drive.name, "error": e})
+
+        # Update the project notes in ProjectDB for drives that had views successfully created
+        if args.dry_run:
+            logging.info(
+                f"[DRY RUN] Would have updated project notes for {len(created_views)} drives."
+            )
+        else:
+            for drive_info in created_views:
+                drive_name = drive_info["drive"]
+                try:
+                    projects = project_db.get_research_drive_projects(drive_id=drive_info["drive_id"])
+                    for project in projects:
+                        new_notes = f"{project.notes}\n\n[Automated Update] A view has been created in Vast for research drive {drive_name} associated with this project."
+                        project_db.update_project_notes(project_id=project.id, new_notes=new_notes)
+                except Exception as e:
+                    logging.error(f"Error updating project notes for research drive {drive_name}: {e}")
+                    error_views.append({"drive": drive_name, "error": f"View created but failed to update project notes: {e}"})
 
         # Final summary of results
         logging.info("Finished processing research drives.")
@@ -198,7 +202,7 @@ def main() -> None:
             os.makedirs("output", exist_ok=True)
             with open("output/created_views.txt", "w") as f:
                 for drive in created_views:
-                    f.write(f"{drive['drive']}: {drive['quota_gb']} GB\n")
+                    f.write(f"{drive['drive']} (ID: {drive['drive_id']}): {drive['quota_gb']} GB\n")
 
             with open("output/skipped_views.txt", "w") as f:
                 for item in skipped_views:
