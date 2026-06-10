@@ -7,7 +7,8 @@
 ## Before running in production:
 - Remove all test code and flags
 - Confirm view protocols to use (e.g. SMB, S3?) and update the script accordingly
-- Get production API credentials and test against the production environment
+- Get production API credentials and do dry run against the production environment
 - Confirm what the default view policy should be, and get the policy ID to use in the script
 - Confirm the `research_drives_root` path in production Vast where the views should be created
 - Coordinate with the Unifiles migration to ensure that the directories are created in Vast as expected
+- Provide ProjectDB API credentials to ASI so they can run the script in production and create the views

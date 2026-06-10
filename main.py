@@ -54,16 +54,16 @@ def main() -> None:
     created_views = []
     skipped_views = []
     error_views = []
-    
+
     # Read list of drives to process from csv file
-    with open(args.drives_file, "r", encoding="utf-8") as f:
+    with open(args.drives_file, encoding="utf-8") as f:
         drive_names_to_process = {line.strip() for line in f if line.strip()}
     logging.info(f"Loaded {len(drive_names_to_process)} drive names to process from {args.drives_file}.")
 
     # Read information about archived data on tape, and adjust quotas accordingly.
     # Use the ProjectDB quota + premigrated_used + migrated_used to determine the total required quota for each
     # drive, and update the drive allocated_gb value accordingly before creating the view in Vast.
-    with open(args.archived_data_file, "r", encoding="utf-8") as f:
+    with open(args.archived_data_file, encoding="utf-8") as f:
         csv_reader = csv.DictReader(f)
         archived_data = {}
         for line in csv_reader:

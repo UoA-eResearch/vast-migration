@@ -330,7 +330,7 @@ class VastAPIClient:
         view_id = view.get("id")
         if not view_id:
             raise RuntimeError("could not determine created view id")
-        
+
         # Set ACL on the view
         acl = []
         if groups.ro_group:
