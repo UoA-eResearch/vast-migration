@@ -330,34 +330,37 @@ class VastAPIClient:
         view_id = view.get("id")
         if not view_id:
             raise RuntimeError("could not determine created view id")
-
-        # Set ACLs on the view
+        
+        # Set ACL on the view
+        acl = []
+        if groups.ro_group:
+            acl.append({
+                "fqdn": "UoA.auckland.ac.nz",
+                "name": f"{groups.ro_group}",
+                "perm": "READ",
+                "grantee": "groups",
+            })
+        if groups.rw_group:
+            acl.append({
+                "fqdn": "UoA.auckland.ac.nz",
+                "name": f"{groups.rw_group}",
+                "perm": "CHANGE",
+                "grantee": "groups",
+            })
+        if groups.adm_group:
+            acl.append({
+                "fqdn": "UoA.auckland.ac.nz",
+                "name": f"{groups.adm_group}",
+                "perm": "FULL",
+                "grantee": "groups",
+            })
         acl_params = {
             "share_acl": {
                 "enabled": True,
-                "acl": [
-                    {
-                        "fqdn": "UoA.auckland.ac.nz",
-                        "name": f"{groups.ro_group}",
-                        "perm": "READ",
-                        "grantee": "groups",
-                    },
-                    {
-                        "fqdn": "UoA.auckland.ac.nz",
-                        "name": f"{groups.rw_group}",
-                        "perm": "CHANGE",
-                        "grantee": "groups",
-                    },
-                    {
-                        "fqdn": "UoA.auckland.ac.nz",
-                        "name": f"{groups.adm_group}",
-                        "perm": "FULL",
-                        "grantee": "groups",
-                    },
-                ],
+                "acl": acl
             }
         }
-        log.info("setting ACLs on view %s with params: %s", view_id, acl_params)
+        log.info("setting ACL on view %s with params: %s", view_id, acl_params)
         self.update_view(view_id=view_id, params=acl_params)
 
         # Set quota on the view's path
