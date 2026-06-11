@@ -6,9 +6,9 @@ class Quota(BaseModel):
 
     id: int
     name: str
-    soft_limit: int
-    hard_limit: int
-    used_capacity: int
-    used_effective_capacity: int
+    soft_limit: int               # bytes
+    hard_limit: int               # bytes
+    used_capacity: int            # bytes
+    used_effective_capacity: int  # bytes
     percent_capacity: int
     path: str # The path this quota is applied to (e.g. "/myview")

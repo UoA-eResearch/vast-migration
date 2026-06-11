@@ -11,7 +11,7 @@ from config import (
     PROJECT_DB_API_KEY,
     RESEARCH_DRIVES_ROOT,
     USE_TEST_GROUPS,
-    VAST_HOST,
+    VAST_ADDRESS,
     VAST_TOKEN,
     WRITE_OUTPUT_FILES,
 )
@@ -71,7 +71,8 @@ def main() -> None:
             premigrated_used_kb = float(line["premigrated_used_kb"].replace(",", ""))
             migrated_used_kb = float(line["migrated_used_kb"].replace(",", ""))
             archived_data[drive_name] = {
-                "total_archived_used_gb": (premigrated_used_kb + migrated_used_kb) / 1e6
+                "total_archived_used_gb": (premigrated_used_kb + migrated_used_kb)
+                / (1024 ** 2)  # Convert KB to GB
             }
     logging.info(f"Loaded archived data info from {args.archived_data_file}.")
 
@@ -102,7 +103,7 @@ def main() -> None:
                 logging.warning(f"No archived data information found for drive {drive.name}. Using original allocated GB of {drive.allocated_gb} GB.")
 
         # Initialize Vast API client
-        vast = VastAPIClient(VAST_HOST, VAST_TOKEN)
+        vast = VastAPIClient(VAST_ADDRESS, VAST_TOKEN)
 
         # Get all existing views in Vast to check for duplicates before creating new ones
         existing_views = vast.get_views()

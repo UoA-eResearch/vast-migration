@@ -1,6 +1,7 @@
 import logging
 
 import httpx
+from httpx_retries import Retry, RetryTransport
 
 from models.research_drive import ResearchDrive
 from models.research_drive_groups import ResearchDriveGroups
@@ -20,6 +21,7 @@ class ProjectDBAPIClient:
                 "apikey": api_key,
             },
             timeout=30.0,
+            transport=RetryTransport(retry=Retry(total=3, backoff_factor=1)),
         )
 
     def get_research_drive_by_name(self, drive_name: str) -> ResearchDrive:

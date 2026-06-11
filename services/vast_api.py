@@ -331,7 +331,7 @@ class VastAPIClient:
         if not view_id:
             raise RuntimeError("could not determine created view id")
 
-        # Set ACL on the view
+        # Define the ACL based on the groups
         acl = []
         if groups.ro_group:
             acl.append({
@@ -354,14 +354,16 @@ class VastAPIClient:
                 "perm": "FULL",
                 "grantee": "groups",
             })
-        acl_params = {
-            "share_acl": {
-                "enabled": True,
-                "acl": acl
+        
+        if acl:
+            acl_params = {
+                "share_acl": {
+                    "enabled": True,
+                    "acl": acl
+                }
             }
-        }
-        log.info("setting ACL on view %s with params: %s", view_id, acl_params)
-        self.update_view(view_id=view_id, params=acl_params)
+            log.info("setting ACL on view %s with params: %s", view_id, acl_params)
+            self.update_view(view_id=view_id, params=acl_params)
 
         # Set quota on the view's path
         log.info(

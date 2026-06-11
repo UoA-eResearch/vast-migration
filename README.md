@@ -59,7 +59,7 @@ Fill in the values for each environment. These files are git-ignored — never c
 
 | Variable | Description |
 |---|---|
-| `VAST_HOST` | Hostname of the Vast Data API |
+| `VAST_ADDRESS` | Address of the Vast Data API |
 | `VAST_TOKEN` | API token for Vast Data |
 | `PROJECT_DB_API_HOST` | Hostname of the ProjectDB API |
 | `PROJECT_DB_API_KEY` | API key for the ProjectDB API |
@@ -81,6 +81,12 @@ To verify what the script _would_ do without making any changes in Vast, use the
 ```bash
 uv run --env-file .env.prod python main.py --dry-run
 ```
+
+### Results output
+If `WRITE_OUTPUT_FILES` is set to `true` (default), the script will write output CSV files to the `./output` folder with details of the created views, skipped views, and error cases.
+
+- Skipped views are drives that already had a view in Vast. These should still be reviewed to ensure they have the correct ACLs and quotas set in Vast.
+- Error cases include any drive for which the script attempted to create a view but encountered an error (e.g. due to API issues, required drive or group details not found in CeR ProjectDB etc.). These should be reviewed and remediated as needed (e.g. by manually creating the view in Vast, fixing drive details in ProjectDB, etc.).
 
 
 ## Testing
