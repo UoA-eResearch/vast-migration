@@ -9,7 +9,7 @@ Quotas are determined based on the allocated GB for the drive in ProjectDB, with
 
 Once a view is successfully created for a research drive, the script also updates the associated project notes in ProjectDB to indicate this.
 
-Additionally, there is a dry-run mode to verify what the script would do without making any changes in Vast.
+Additionally, there is a dry-run mode to verify what the script would do without making any changes in Vast or the ProjectDB.
 
 
 ## Setup
@@ -67,22 +67,30 @@ Fill in the values for each environment. These files are git-ignored — never c
 | `LOG_LEVEL` | (optional) Logging level (e.g. DEBUG, INFO, WARNING) |
 | `WRITE_OUTPUT_FILES` | (optional) Whether to write output files with the results (true/false) |
 
-### 2. Run the script
+### 2. Prepare the input CSV file
+
+Create a CSV file with a list of research drive names, one per line. See `input\drives-to-process.example.csv` for the expected format.
+
+### 3. Obtain the Archived data usage CSV file
+
+Get a recent CSV export of the archived data usage for research drives. This file is used to determine if there is archived data that should be included in the view quotas. See `input\drives-archived-data.example.csv` for the expected format.
+
+### 4. Run the script
 
 ```bash
-uv run --env-file .env.prod python main.py   # production
-uv run --env-file .env.test python main.py   # test
+uv run --env-file .env.prod python main.py --drives-file input/drives-to-process.csv --archived-data-file input/drives-archived-data.csv  # production
+uv run --env-file .env.test python main.py --drives-file input/drives-to-process.csv --archived-data-file input/drives-archived-data.csv   # test
 ```
 
-### Dry run
+#### Dry run
 
-To verify what the script _would_ do without making any changes in Vast, use the `--dry-run` flag. It will fetch research drives from ProjectDB and check for existing views, but will not create any new views.
+To verify what the script _would_ do without making any changes in Vast, use the `--dry-run` flag. It will fetch research drives from ProjectDB and check for existing views, but will not create any new views or update the project notes in ProjectDB.
 
 ```bash
 uv run --env-file .env.prod python main.py --dry-run
 ```
 
-### Results output
+#### Results output
 If `WRITE_OUTPUT_FILES` is set to `true` (default), the script will write output CSV files to the `./output` folder with details of the created views, skipped views, and error cases.
 
 - Skipped views are drives that already had a view in Vast. These should still be reviewed to ensure they have the correct ACLs and quotas set in Vast.

@@ -10,13 +10,11 @@ from config import (
     PROJECT_DB_API_HOST,
     PROJECT_DB_API_KEY,
     RESEARCH_DRIVES_ROOT,
-    USE_TEST_GROUPS,
     VAST_ADDRESS,
     VAST_TOKEN,
     WRITE_OUTPUT_FILES,
 )
 from models.research_drive import ResearchDrive
-from models.research_drive_groups import ResearchDriveGroups
 from services.project_db_api import ProjectDBAPIClient
 from services.vast_api import VastAPIClient
 
@@ -109,21 +107,11 @@ def main() -> None:
         existing_views = vast.get_views()
         logging.info(f"Retrieved {len(existing_views)} existing views from Vast.")
 
-        ######## TODO: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
-        drive_groups = ResearchDriveGroups(
-            adm_group="app_storage_test_admin",
-            ro_group="app_storage_test_ro",
-            rw_group="app_storage_test_rw",
-            t_group="",
-        )
-        ######## END: TESTING ONLY _ REMOVE BEFORE PRODUCTION ############
-
         # For each research drive, create a matching view in Vast and apply the quota
         for drive in drives:
             try:
-                if not USE_TEST_GROUPS:
-                    # Get the drive group information from ProjectDB
-                    drive_groups = project_db.get_drive_groups(drive_id=drive.id)
+                # Get the drive group information from ProjectDB
+                drive_groups = project_db.get_drive_groups(drive_id=drive.id)
 
             except Exception as e:
                 logging.error(f"Error fetching drive groups for research drive {drive.name}: {e}")
@@ -131,10 +119,7 @@ def main() -> None:
                 continue
 
             try:
-                # TODO: for testing we are checking both path options - for production we should only need to check the
-                # /{RESEARCH_DRIVES_ROOT}/{drive.name} path since that's where the drive views will be created
-                if any(view.path == f"/{RESEARCH_DRIVES_ROOT}/{drive.name}" for view in existing_views
-                       ) or any(view.path == f"/{drive.name}" for view in existing_views):
+                if any(view.path == f"/{RESEARCH_DRIVES_ROOT}/{drive.name}" for view in existing_views):
                     logging.info(
                         f"View for research drive {drive.name} already exists. Skipping."
                     )

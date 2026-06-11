@@ -354,7 +354,7 @@ class VastAPIClient:
                 "perm": "FULL",
                 "grantee": "groups",
             })
-        
+
         if acl:
             acl_params = {
                 "share_acl": {

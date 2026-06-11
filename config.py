@@ -16,4 +16,3 @@ RESEARCH_DRIVES_ROOT: str = _require("RESEARCH_DRIVES_ROOT") # Root level direct
 
 LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 WRITE_OUTPUT_FILES: bool = os.getenv("WRITE_OUTPUT_FILES", "true").lower() == "true"
-USE_TEST_GROUPS: bool = os.getenv("USE_TEST_GROUPS", "false").lower() == "true"
