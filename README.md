@@ -87,7 +87,7 @@ uv run --env-file .env.test python main.py --drives-file input/drives-to-process
 To verify what the script _would_ do without making any changes in Vast, use the `--dry-run` flag. It will fetch research drives from ProjectDB and check for existing views, but will not create any new views or update the project notes in ProjectDB.
 
 ```bash
-uv run --env-file .env.prod python main.py --dry-run
+uv run --env-file .env.prod python main.py --drives-file input/drives-to-process.csv --archived-data-file input/drives-archived-data.csv --dry-run
 ```
 
 #### Results output
