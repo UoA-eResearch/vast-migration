@@ -1,17 +1,3 @@
-# class VastAPIClient:
-#     """Client for managing views and quotas in Vast Data."""
-
-
-#     def close(self) -> None:
-#         self._client.close()
-
-#     def __enter__(self) -> VastAPIClient:
-#         return self
-
-#     def __exit__(self, *args: object) -> None:
-#         self.close()
-
-
 """Minimal wrapper for the VAST Data python SDK (vastpy).
 
 This module provides `VastAPI`, a small wrapper around
@@ -170,15 +156,15 @@ class VastAPIClient:
         Example: To enable share acl on a view this is the data you need to pass:
         {
           "share_acl": {
-           "enabled": True,
-           "acl": [
-             {
-               "fqdn": "UoA.auckland.ac.nz",    # The fully qualified domain name of the Active Directory domain
-               "name": "<GROUP_OR_USER_NAME>",  # The name of the Active Directory group or user
-               "perm": "<PERMISSION_TYPE>",     # FULL | CHANGE | READ
-               "grantee": "<GRANTEE_TYPE>",     # groups | users
-             }
-           ]
+            "enabled": True,
+            "acl": [
+              {
+                "fqdn": "UoA.auckland.ac.nz",    # The fully qualified domain name of the Active Directory domain
+                "name": "<GROUP_OR_USER_NAME>",  # The name of the Active Directory group or user
+                "perm": "<PERMISSION_TYPE>",     # FULL | CHANGE | READ
+                "grantee": "<GRANTEE_TYPE>",     # groups | users
+              }
+            ]
           }
         }
         Ref: https://support.vastdata.com/s/api-docs Views > Modify a View
