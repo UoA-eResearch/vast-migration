@@ -176,7 +176,7 @@ class VastAPIClient:
 
 
     ### View Policy Management ###
-    def get_view_policies(self) -> Any:
+    def get_view_policies(self, name: str = "") -> Any:
         """Return the list of view policies from the cluster.
 
         Raises RuntimeError when the client is not available or when the
@@ -185,7 +185,7 @@ class VastAPIClient:
         if not self.client:
             raise RuntimeError("VAST client not initialized")
 
-        return self.client.viewpolicies.get()
+        return self.client.viewpolicies.get(name=name)
 
 
     def create_view_policy(self, policy: Any) -> Any:

@@ -46,6 +46,10 @@ This creates a `.venv` in the project root, installs all runtime and dev depende
 
 ## Usage
 
+### Prerequisites
+
+- A view policy must have been created in Vast for the views to be successfully created. The script expects the policy name to be provided in the `VIEW_POLICY_NAME` environment variable.
+
 ### 1. Set environment variables
 
 Copy `.env.example` to create environment-specific files:
@@ -64,6 +68,7 @@ Fill in the values for each environment. These files are git-ignored — never c
 | `PROJECT_DB_API_HOST` | Hostname of the ProjectDB API |
 | `PROJECT_DB_API_KEY` | API key for the ProjectDB API |
 | `RESEARCH_DRIVES_ROOT` | Root directory in Vast where the views will be created |
+| `VIEW_POLICY_NAME` | Name of the view policy to apply to created views |
 | `LOG_LEVEL` | (optional) Logging level (e.g. DEBUG, INFO, WARNING) |
 | `WRITE_OUTPUT_FILES` | (optional) Whether to write output files with the results (true/false) |
 

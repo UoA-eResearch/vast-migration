@@ -12,6 +12,7 @@ from config import (
     RESEARCH_DRIVES_ROOT,
     VAST_ADDRESS,
     VAST_TOKEN,
+    VIEW_POLICY_NAME,
     WRITE_OUTPUT_FILES,
 )
 from models.research_drive import ResearchDrive
@@ -107,6 +108,16 @@ def main() -> None:
         existing_views = vast.get_views()
         logging.info(f"Retrieved {len(existing_views)} existing views from Vast.")
 
+        # Get the view policy ID from Vast based on the provided policy name
+        policy_id = None
+        policies = vast.get_view_policies(name=VIEW_POLICY_NAME)
+        if not policies:
+            raise RuntimeError(f"view policy '{VIEW_POLICY_NAME}' not found")
+        policy = policies[0]
+        policy_id = policy.get("id") if isinstance(policy, dict) else None
+        if not policy_id:
+            raise RuntimeError("could not determine view policy id")
+
         # For each research drive, create a matching view in Vast and apply the quota
         for drive in drives:
             try:
@@ -136,8 +147,7 @@ def main() -> None:
                         name=drive.name,
                         quota_gb=round(drive.allocated_gb),
                         groups=drive_groups,
-                        # TODO: Will require a policy ID in Production, but leave as None for now (use default policy)
-                        policy_id=None,
+                        policy_id=policy_id,
                         # Don't create the directory since it should exist once the Unifiles migration is complete
                         create_dir=False,
                     )
