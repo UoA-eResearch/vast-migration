@@ -16,6 +16,7 @@ class Config(BaseSettings):
     vast_address: str = Field(validation_alias="VAST_ADDRESS")
     vast_token: str = Field(validation_alias="VAST_TOKEN")
     project_db_api_host: str = Field(validation_alias="PROJECT_DB_API_HOST")
+    project_db_api_key: str = Field(validation_alias="PROJECT_DB_API_KEY")
     research_drives_root: str = Field(validation_alias="RESEARCH_DRIVES_ROOT")
     view_policy_name: str = Field(validation_alias="VIEW_POLICY_NAME")
     log_level: str = Field(validation_alias="LOG_LEVEL", default="INFO")
@@ -42,7 +43,7 @@ class BarbicanClient:
 
     def create_client(self) -> barbican_client.Client:
         """Create a Barbican client using the authenticated session."""
-        return barbican_client.Client(version="v1", session=self.session, region_name=self.config.region_name)
+        return barbican_client.Client(version="v1", session=self.session, region_name=self.config.region_name, service_type="key-manager")
 
 
 config = Config()
