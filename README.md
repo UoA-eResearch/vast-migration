@@ -71,6 +71,10 @@ Fill in the values for each environment. These files are git-ignored — never c
 | `VIEW_POLICY_NAME` | Name of the view policy to apply to created views |
 | `LOG_LEVEL` | (optional) Logging level (e.g. DEBUG, INFO, WARNING) |
 | `WRITE_OUTPUT_FILES` | (optional) Whether to write output files with the results (true/false) |
+| `OS_AUTH_TYPE` | OpenStack authentication type (e.g. v3applicationcredential) |
+| `OS_AUTH_URL` | OpenStack authentication URL |
+| `OS_APPLICATION_CREDENTIAL_ID` | OpenStack application credential ID |
+| `OS_APPLICATION_CREDENTIAL_SECRET` | OpenStack application credential secret |
 
 ### 2. Prepare the input CSV file
 
