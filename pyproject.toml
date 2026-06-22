@@ -9,6 +9,7 @@ dependencies = [
     "httpx-retries>=0.5.0",
     "pydantic>=2.0",
     "pydantic-settings>=2.14.2",
+    "pytest-cov>=7.1.0",
     "python-barbicanclient>=7.4.0",
     "vastpy>=0.3.22",
 ]
@@ -24,6 +25,13 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["."]
+omit = ["tests/*", ".venv/*"]
+
+[tool.coverage.report]
+show_missing = true
 
 [tool.ruff]
 line-length = 120

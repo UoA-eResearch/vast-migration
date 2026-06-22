@@ -119,7 +119,7 @@ uv run pytest
 ### 2. Run tests with coverage
 
 ```bash
-uv run pytest --cov=vast_migration tests/
+uv run pytest --cov=. tests/
 ```
 
 ## Linting & Formatting
