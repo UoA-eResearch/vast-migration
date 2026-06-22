@@ -34,6 +34,8 @@ class BarbicanClientFactory:
 
     def _create_session(self) -> session.Session:
         """Create an authenticated session with OpenStack Keystone."""
+        #TODO: Add support for other authentication types if needed in the future or simplify to only 
+        # support application credential auth if that's the only type we will use.
         auth = identity.V3ApplicationCredential(
             auth_url=self.config.auth_url,
             application_credential_id=self.config.application_credential_id,

@@ -76,6 +76,8 @@ Fill in the values for each environment. These files are git-ignored — never c
 | `OS_APPLICATION_CREDENTIAL_ID` | OpenStack application credential ID |
 | `OS_APPLICATION_CREDENTIAL_SECRET` | OpenStack application credential secret |
 
+Note: The OD_AUTH_TYPE field may be deprecated in the future. It is included here as a placeholder should we have difficulty authenticating with application credentials.
+
 ### 2. Prepare the input CSV file
 
 Create a CSV file with a list of research drive names, one per line. See `input\drives-to-process.example.csv` for the expected format.
