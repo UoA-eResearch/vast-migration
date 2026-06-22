@@ -13,7 +13,6 @@ from typing import Any
 import vastpy
 from vastpy import VASTClient
 
-from config import RESEARCH_DRIVES_ROOT
 from models.research_drive_groups import ResearchDriveGroups
 from models.view import View
 
@@ -29,10 +28,12 @@ class ViewAccessProtocol(Enum):
 
 class VastAPIClient:
     """Wrapper for `vastpy.VASTClient` that provides helper methods for managing views and quotas in Vast Data."""
+
     def __init__(
         self,
         address: str,
         token: str,
+        research_drives_root: str,
     ):
         if not address:
             raise ValueError("address is required")
@@ -40,13 +41,16 @@ class VastAPIClient:
         if not token:
             raise ValueError("token is required")
 
+        if not research_drives_root:
+            raise ValueError("research_drives_root is required")
+
         self.address = address
         self._token = token
+        self.research_drives_root = research_drives_root
 
         # Initialize the underlying client.
         self.client = VASTClient(address=address, token=token)
         log.info("Initialized VAST client for %s", address)
-
 
     ### View Management ###
     def get_view(self, view_id: int) -> Any:
@@ -70,7 +74,6 @@ class VastAPIClient:
             raise RuntimeError("VAST client not initialized")
 
         return [View.model_validate(v) for v in self.client.views.get(path=path)]
-
 
     def create_view(
         self,
@@ -104,21 +107,15 @@ class VastAPIClient:
         # SMB validations
         if "SMB" in prot_list:
             if not smb_share_name:
-                raise ValueError(
-                    "smb_share_name is required when SMB protocol is enabled"
-                )
+                raise ValueError("smb_share_name is required when SMB protocol is enabled")
             forbidden = set('/\\:|<>*?"')
             if any(c in forbidden for c in smb_share_name):
-                raise ValueError(
-                    'smb_share_name contains invalid characters; it cannot include any of: /\\:|<>*?"'
-                )
+                raise ValueError('smb_share_name contains invalid characters; it cannot include any of: /\\:|<>*?"')
 
         # S3 validations
         if "S3" in prot_list:
             if not s3_bucket_name or not s3_bucket_owner:
-                raise ValueError(
-                    "s3_bucket_name and s3_bucket_owner are required when S3 protocol is enabled"
-                )
+                raise ValueError("s3_bucket_name and s3_bucket_owner are required when S3 protocol is enabled")
 
         if not policy_id:
             policies = self.client.viewpolicies.get(name="default")
@@ -174,7 +171,6 @@ class VastAPIClient:
         log.info("updating view %s with params: %s", view_id, params)
         return self.client.views[view_id].patch(**params)
 
-
     ### View Policy Management ###
     def get_view_policies(self, name: str = "") -> Any:
         """Return the list of view policies from the cluster.
@@ -187,7 +183,6 @@ class VastAPIClient:
 
         return self.client.viewpolicies.get(name=name)
 
-
     def create_view_policy(self, policy: Any) -> Any:
         """Create a view policy with the specified policy schema (refer to API documentation).
 
@@ -198,7 +193,6 @@ class VastAPIClient:
 
         log.info("creating view policy: %s", policy)
         return self.client.viewpolicies.post(**policy)
-
 
     ### Quota Management ###
     def get_quotas(self, path: str = "") -> Any:
@@ -212,7 +206,6 @@ class VastAPIClient:
 
         return self.client.quotas.get(path=path)
 
-
     def get_quota(self, quota_id: int) -> Any:
         """Return the quota with the specified `quota_id`.
 
@@ -223,7 +216,6 @@ class VastAPIClient:
             raise RuntimeError("VAST client not initialized")
 
         return self.client.quotas[quota_id].get()
-
 
     def create_quota(self, name: str, path: str, quota_gb: int) -> Any:
         """Create a quota with the specified `name`, `path`, and `quota_gb` size.
@@ -248,7 +240,6 @@ class VastAPIClient:
         log.info("creating quota with data: %s", quota_data)
         return self.client.quotas.post(**quota_data)
 
-
     def modify_quota(self, quota_id: int, quota_gb: int) -> Any:
         """Modify the quota with the specified `quota_id` to have the new `quota_gb` size.
 
@@ -269,7 +260,6 @@ class VastAPIClient:
         log.info("modifying quota %s with data: %s", quota_id, quota_data)
         return self.client.quotas[quota_id].patch(**quota_data)
 
-
     def delete_quota(self, quota_id: int) -> None:
         """Delete the quota with the specified `quota_id`.
 
@@ -281,16 +271,10 @@ class VastAPIClient:
         log.info("deleting quota %s", quota_id)
         self.client.quotas[quota_id].delete()
 
-
     ### Research Drive Handlers ###
     def create_research_drive(
-            self,
-            name: str,
-            quota_gb: int,
-            groups: ResearchDriveGroups,
-            policy_id: int | None,
-            create_dir: bool = True
-        ):
+        self, name: str, quota_gb: int, groups: ResearchDriveGroups, policy_id: int | None, create_dir: bool = True
+    ):
         """Create an SMB view for a research drive using the default SMB policy.
 
         Once the view is created, this handler also adds the appropriate ACLs,
@@ -307,7 +291,7 @@ class VastAPIClient:
         # Create the view with the default SMB policy
         log.info("creating research drive view for %s", name)
         view = self.create_view(
-            path=f"/{RESEARCH_DRIVES_ROOT}/{name}",
+            path=f"/{self.research_drives_root}/{name}",
             policy_id=policy_id,
             create_dir=create_dir,
             protocols=[ViewAccessProtocol.SMB],
@@ -320,43 +304,46 @@ class VastAPIClient:
         # Define the ACL based on the groups
         acl = []
         if groups.ro_group:
-            acl.append({
-                "fqdn": "UoA.auckland.ac.nz",
-                "name": f"{groups.ro_group}",
-                "perm": "READ",
-                "grantee": "groups",
-            })
+            acl.append(
+                {
+                    "fqdn": "UoA.auckland.ac.nz",
+                    "name": f"{groups.ro_group}",
+                    "perm": "READ",
+                    "grantee": "groups",
+                }
+            )
         if groups.rw_group:
-            acl.append({
-                "fqdn": "UoA.auckland.ac.nz",
-                "name": f"{groups.rw_group}",
-                "perm": "CHANGE",
-                "grantee": "groups",
-            })
+            acl.append(
+                {
+                    "fqdn": "UoA.auckland.ac.nz",
+                    "name": f"{groups.rw_group}",
+                    "perm": "CHANGE",
+                    "grantee": "groups",
+                }
+            )
         if groups.adm_group:
-            acl.append({
-                "fqdn": "UoA.auckland.ac.nz",
-                "name": f"{groups.adm_group}",
-                "perm": "FULL",
-                "grantee": "groups",
-            })
+            acl.append(
+                {
+                    "fqdn": "UoA.auckland.ac.nz",
+                    "name": f"{groups.adm_group}",
+                    "perm": "FULL",
+                    "grantee": "groups",
+                }
+            )
 
         if acl:
-            acl_params = {
-                "share_acl": {
-                    "enabled": True,
-                    "acl": acl
-                }
-            }
+            acl_params = {"share_acl": {"enabled": True, "acl": acl}}
             log.info("setting ACL on view %s with params: %s", view_id, acl_params)
             self.update_view(view_id=view_id, params=acl_params)
 
         # Set quota on the view's path
-        log.info(
-            "setting quota on research drive %s with size %s GB", name, quota_gb
-        )
+        log.info("setting quota on research drive %s with size %s GB", name, quota_gb)
         try:
-            self.create_quota(name=f"{name}", path=f"/{RESEARCH_DRIVES_ROOT}/{name}", quota_gb=quota_gb)
+            self.create_quota(
+                name=f"{name}",
+                path=f"/{self.research_drives_root}/{name}",
+                quota_gb=quota_gb,
+            )
         except vastpy.RESTFailure as e:
             if e.status == 409:
                 log.info(
@@ -364,13 +351,17 @@ class VastAPIClient:
                     name,
                     e,
                 )
-                quotas = self.get_quotas(path=f"/{RESEARCH_DRIVES_ROOT}/{name}")
+                quotas = self.get_quotas(path=f"/{self.research_drives_root}/{name}")
                 if not quotas:
-                    raise RuntimeError(f"no quotas found for path /{RESEARCH_DRIVES_ROOT}/{name}")
+                    raise RuntimeError(
+                        f"no quotas found for path /{self.research_drives_root}/{name}"
+                    )
                 quota = quotas[0]  # Assuming one quota per research drive path
                 quota_id = quota.get("id") if isinstance(quota, dict) else None
                 if not quota_id:
-                    raise RuntimeError(f"could not determine quota id for path /{RESEARCH_DRIVES_ROOT}/{name}")
+                    raise RuntimeError(
+                        f"could not determine quota id for path /{self.research_drives_root}/{name}"
+                    )
                 self.modify_quota(quota_id=quota_id, quota_gb=quota_gb)
             else:
                 raise
@@ -379,7 +370,6 @@ class VastAPIClient:
             raise
 
         return {"status": "success", "result": f"created _drive_for_{name}"}
-
 
     def resize_research_drive(self, name: str, quota_gb: int):
         """Resize the research drive with the specified `name` to have the new `quota_gb` size.
@@ -393,14 +383,18 @@ class VastAPIClient:
             raise RuntimeError("VAST client not initialized")
 
         # Get the quota for the view's path
-        quotas = self.get_quotas(path=f"/{RESEARCH_DRIVES_ROOT}/{name}")
+        quotas = self.get_quotas(path=f"/{self.research_drives_root}/{name}")
         if not quotas:
-            raise RuntimeError(f"no quotas found for path /{RESEARCH_DRIVES_ROOT}/{name}")
+            raise RuntimeError(
+                f"no quotas found for path /{self.research_drives_root}/{name}"
+            )
 
         quota = quotas[0]  # Assuming one quota per research drive path
         quota_id = quota.get("id") if isinstance(quota, dict) else None
         if not quota_id:
-            raise RuntimeError(f"could not determine quota id for path /{RESEARCH_DRIVES_ROOT}/{name}")
+            raise RuntimeError(
+                f"could not determine quota id for path /{self.research_drives_root}/{name}"
+            )
 
         # Update the quota with the new size
         log.info(
@@ -417,7 +411,6 @@ class VastAPIClient:
             "quota_gb": quota.get("hard_limit") / (1024 * 1024 * 1024),
         }
 
-
     def check_research_drive(self, name: str) -> Any:
         """Return statistics on research drive allocation and current use
 
@@ -426,9 +419,11 @@ class VastAPIClient:
         if not self.client:
             raise RuntimeError("VAST client not initialized")
 
-        quotas = self.get_quotas(path=f"/{RESEARCH_DRIVES_ROOT}/{name}")
+        quotas = self.get_quotas(path=f"/{self.research_drives_root}/{name}")
         if not quotas:
-            raise RuntimeError(f"no quotas found for path /{RESEARCH_DRIVES_ROOT}/{name}")
+            raise RuntimeError(
+                f"no quotas found for path /{self.research_drives_root}/{name}"
+            )
         quota = quotas[0]  # Assuming one quota per research drive path
         return {
             "status": "success",

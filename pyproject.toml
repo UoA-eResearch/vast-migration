@@ -8,6 +8,8 @@ dependencies = [
     "httpx>=0.27",
     "httpx-retries>=0.5.0",
     "pydantic>=2.0",
+    "pydantic-settings>=2.14.1",
+    "python-barbicanclient>=7.4.0",
     "vastpy>=0.3.22",
 ]
 
