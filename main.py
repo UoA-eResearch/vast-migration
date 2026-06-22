@@ -4,18 +4,41 @@ import logging
 import os
 
 import vastpy
+from barbicanclient.v1.client import Client as BarbicanSDKClient
 
-from config import barbican, config
+from config import create_barbican_client, load_config
 from models.research_drive import ResearchDrive
 from services.project_db_api import ProjectDBAPIClient
 from services.vast_api import VastAPIClient
 
-LOG_LEVEL = config.log_level
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-logging.basicConfig(level=getattr(logging, LOG_LEVEL), format="%(asctime)s %(levelname)s %(message)s")
+
+def _get_secret_value(
+    barbican: BarbicanSDKClient, secret_ref: str, secret_label: str
+) -> str:
+    """Fetch and normalize a secret value from Barbican."""
+    try:
+        secret = barbican.secrets.get(secret_ref)
+    except Exception as e:
+        raise RuntimeError(f"Error retrieving {secret_label} from Barbican: {e}") from e
+
+    payload = secret.payload
+    if payload is None:
+        raise RuntimeError(
+            f"{secret_label} secret retrieved from Barbican has no payload."
+        )
+
+    if isinstance(payload, bytes):
+        return payload.decode("utf-8").strip()
+    return str(payload).strip()
 
 
 def main() -> None:
+    config = load_config()
+    logging.getLogger().setLevel(getattr(logging, config.log_level, logging.INFO))
+    barbican = create_barbican_client(config)
+
     parser = argparse.ArgumentParser(description="Create Vast views for research drives migrated from Unifiles.")
     # add csv file argument for list of drives to process
     parser.add_argument(
@@ -68,14 +91,11 @@ def main() -> None:
     logging.info(f"Loaded archived data info from {args.archived_data_file}.")
 
     # Retrieve research drives from ProjectDB
-    try:
-        project_db_api_key_secret = barbican.secrets.get(config.project_db_api_key)
-    except Exception as e:
-        logging.error(f"Error retrieving ProjectDB API key from Barbican: {e}")
-    if not project_db_api_key_secret.payload:
-        logging.error("ProjectDB API key secret retrieved from Barbican has no payload.")
-        raise RuntimeError("ProjectDB API key secret retrieved from Barbican has no payload.")
-    project_db_api_key = str(project_db_api_key_secret.payload).strip()
+    project_db_api_key = _get_secret_value(
+        barbican=barbican,
+        secret_ref=config.project_db_api_key,
+        secret_label="ProjectDB API key",
+    )
     with ProjectDBAPIClient(f"https://{config.project_db_api_host}", project_db_api_key) as project_db:
         # Fetch drive information for each drive name
         drives: list[ResearchDrive] = []
@@ -103,15 +123,14 @@ def main() -> None:
                 )
 
         # Initialize Vast API client
-        try:
-            vast_token_secret = barbican.secrets.get(config.vast_token)
-        except Exception as e:
-            logging.error(f"Error retrieving VAST Token from Barbican: {e}")
-        if not vast_token_secret.payload:
-            logging.error("VAST Token secret retrieved from Barbican has no payload.")
-            raise RuntimeError("VAST Token secret retrieved from Barbican has no payload.")
-        vast_token = str(vast_token_secret.payload).strip()
-        vast = VastAPIClient(config.vast_address, vast_token)
+        vast_token = _get_secret_value(
+            barbican=barbican,
+            secret_ref=config.vast_token,
+            secret_label="VAST token",
+        )
+        vast = VastAPIClient(
+            config.vast_address, vast_token, config.research_drives_root
+        )
 
         # Get all existing views in Vast to check for duplicates before creating new ones
         existing_views = vast.get_views()

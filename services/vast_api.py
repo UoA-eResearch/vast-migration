@@ -13,12 +13,10 @@ from typing import Any
 import vastpy
 from vastpy import VASTClient
 
-from config import config
 from models.research_drive_groups import ResearchDriveGroups
 from models.view import View
 
 log = logging.getLogger("vast_request")
-RESEARCH_DRIVES_ROOT = config.research_drives_root
 
 
 # This is not a comprehensive list of supported protocols. We can add more as needed.
@@ -35,6 +33,7 @@ class VastAPIClient:
         self,
         address: str,
         token: str,
+        research_drives_root: str,
     ):
         if not address:
             raise ValueError("address is required")
@@ -42,8 +41,12 @@ class VastAPIClient:
         if not token:
             raise ValueError("token is required")
 
+        if not research_drives_root:
+            raise ValueError("research_drives_root is required")
+
         self.address = address
         self._token = token
+        self.research_drives_root = research_drives_root
 
         # Initialize the underlying client.
         self.client = VASTClient(address=address, token=token)
@@ -288,7 +291,7 @@ class VastAPIClient:
         # Create the view with the default SMB policy
         log.info("creating research drive view for %s", name)
         view = self.create_view(
-            path=f"/{RESEARCH_DRIVES_ROOT}/{name}",
+            path=f"/{self.research_drives_root}/{name}",
             policy_id=policy_id,
             create_dir=create_dir,
             protocols=[ViewAccessProtocol.SMB],
@@ -336,7 +339,11 @@ class VastAPIClient:
         # Set quota on the view's path
         log.info("setting quota on research drive %s with size %s GB", name, quota_gb)
         try:
-            self.create_quota(name=f"{name}", path=f"/{RESEARCH_DRIVES_ROOT}/{name}", quota_gb=quota_gb)
+            self.create_quota(
+                name=f"{name}",
+                path=f"/{self.research_drives_root}/{name}",
+                quota_gb=quota_gb,
+            )
         except vastpy.RESTFailure as e:
             if e.status == 409:
                 log.info(
@@ -344,13 +351,17 @@ class VastAPIClient:
                     name,
                     e,
                 )
-                quotas = self.get_quotas(path=f"/{RESEARCH_DRIVES_ROOT}/{name}")
+                quotas = self.get_quotas(path=f"/{self.research_drives_root}/{name}")
                 if not quotas:
-                    raise RuntimeError(f"no quotas found for path /{RESEARCH_DRIVES_ROOT}/{name}")
+                    raise RuntimeError(
+                        f"no quotas found for path /{self.research_drives_root}/{name}"
+                    )
                 quota = quotas[0]  # Assuming one quota per research drive path
                 quota_id = quota.get("id") if isinstance(quota, dict) else None
                 if not quota_id:
-                    raise RuntimeError(f"could not determine quota id for path /{RESEARCH_DRIVES_ROOT}/{name}")
+                    raise RuntimeError(
+                        f"could not determine quota id for path /{self.research_drives_root}/{name}"
+                    )
                 self.modify_quota(quota_id=quota_id, quota_gb=quota_gb)
             else:
                 raise
@@ -372,14 +383,18 @@ class VastAPIClient:
             raise RuntimeError("VAST client not initialized")
 
         # Get the quota for the view's path
-        quotas = self.get_quotas(path=f"/{RESEARCH_DRIVES_ROOT}/{name}")
+        quotas = self.get_quotas(path=f"/{self.research_drives_root}/{name}")
         if not quotas:
-            raise RuntimeError(f"no quotas found for path /{RESEARCH_DRIVES_ROOT}/{name}")
+            raise RuntimeError(
+                f"no quotas found for path /{self.research_drives_root}/{name}"
+            )
 
         quota = quotas[0]  # Assuming one quota per research drive path
         quota_id = quota.get("id") if isinstance(quota, dict) else None
         if not quota_id:
-            raise RuntimeError(f"could not determine quota id for path /{RESEARCH_DRIVES_ROOT}/{name}")
+            raise RuntimeError(
+                f"could not determine quota id for path /{self.research_drives_root}/{name}"
+            )
 
         # Update the quota with the new size
         log.info(
@@ -404,9 +419,11 @@ class VastAPIClient:
         if not self.client:
             raise RuntimeError("VAST client not initialized")
 
-        quotas = self.get_quotas(path=f"/{RESEARCH_DRIVES_ROOT}/{name}")
+        quotas = self.get_quotas(path=f"/{self.research_drives_root}/{name}")
         if not quotas:
-            raise RuntimeError(f"no quotas found for path /{RESEARCH_DRIVES_ROOT}/{name}")
+            raise RuntimeError(
+                f"no quotas found for path /{self.research_drives_root}/{name}"
+            )
         quota = quotas[0]  # Assuming one quota per research drive path
         return {
             "status": "success",

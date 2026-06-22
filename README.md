@@ -64,9 +64,9 @@ Fill in the values for each environment. These files are git-ignored — never c
 | Variable | Description |
 |---|---|
 | `VAST_ADDRESS` | Address of the Vast Data API |
-| `VAST_TOKEN` | API token for Vast Data |
+| `VAST_TOKEN` | Barbican secret reference (UUID) for the Vast API token |
 | `PROJECT_DB_API_HOST` | Hostname of the ProjectDB API |
-| `PROJECT_DB_API_KEY` | API key for the ProjectDB API |
+| `PROJECT_DB_API_KEY` | Barbican secret reference (UUID) for the ProjectDB API key |
 | `RESEARCH_DRIVES_ROOT` | Root directory in Vast where the views will be created |
 | `VIEW_POLICY_NAME` | Name of the view policy to apply to created views |
 | `LOG_LEVEL` | (optional) Logging level (e.g. DEBUG, INFO, WARNING) |

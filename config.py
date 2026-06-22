@@ -25,8 +25,8 @@ class Config(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
-class BarbicanClient:
-    """Client for interacting with OpenStack Barbican to retrieve secrets."""
+class BarbicanClientFactory:
+    """Factory for constructing an authenticated OpenStack Barbican client."""
 
     def __init__(self, config: Config):
         self.config = config
@@ -43,9 +43,20 @@ class BarbicanClient:
 
     def create_client(self) -> barbican_client.Client:
         """Create a Barbican client using the authenticated session."""
-        return barbican_client.Client(version="v1", session=self.session, region_name=self.config.region_name, service_type="key-manager")
+        return barbican_client.Client(
+            version="v1",
+            session=self.session,
+            region_name=self.config.region_name,
+            service_type="key-manager",
+            interface=self.config.interface,
+        )
 
 
-config = Config()
-bclient = BarbicanClient(config)
-barbican = bclient.create_client()
+def load_config() -> Config:
+    """Load settings from environment and .env files."""
+    return Config()  # type: ignore[call-arg]
+
+
+def create_barbican_client(config: Config) -> barbican_client.Client:
+    """Create a Barbican SDK client from application settings."""
+    return BarbicanClientFactory(config).create_client()
