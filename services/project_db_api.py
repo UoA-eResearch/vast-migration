@@ -5,6 +5,7 @@ import httpx
 from httpx_retries import Retry, RetryTransport
 
 from models.research_drive import ResearchDrive
+from models.research_drive_acl_groups import ResearchDriveAclGroups
 from models.research_drive_groups import ResearchDriveGroups
 from models.research_drive_project import ResearchDriveProject
 
@@ -39,6 +40,19 @@ class ProjectDBAPIClient:
             raise
         except Exception as e:
             logging.error(f"Unexpected error occurred while fetching research drive {drive_name}: {e}")
+            raise
+
+    def get_drive_acl_groups(self, drive_name: str) -> list[ResearchDriveAclGroups]:
+        """Return the ACL group information for a given research drive."""
+        try:
+            response = self._client.get(f"/researchdrive/{drive_name}/acl_groups")
+            response.raise_for_status()
+            return [ResearchDriveAclGroups.model_validate(group_info) for group_info in response.json()]
+        except httpx.HTTPError as e:
+            logging.error(f"Error fetching ACL groups for research drive {drive_name} from ProjectDB: {e}")
+            raise
+        except Exception as e:
+            logging.error(f"Unexpected error occurred while fetching ACL groups for research drive {drive_name}: {e}")
             raise
 
     def get_drive_groups(self, drive_id: int) -> ResearchDriveGroups:

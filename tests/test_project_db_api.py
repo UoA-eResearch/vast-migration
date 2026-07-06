@@ -4,6 +4,7 @@ from httpx import Response
 
 from services.project_db_api import ProjectDBAPIClient
 
+
 class TestProjectDBAPIClient:
 
     @respx.mock

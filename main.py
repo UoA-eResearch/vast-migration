@@ -72,7 +72,7 @@ def main() -> None:
 
     # Read list of drives to process from csv file
     with open(args.drives_file, encoding="utf-8") as f:
-        drive_names_to_process = {line.strip() for line in f if line.strip()}
+        drive_names_to_process = {line.strip().lower() for line in f if line.strip()}
     logging.info(f"Loaded {len(drive_names_to_process)} drive names to process from {args.drives_file}.")
 
     # Read information about archived data on tape, and adjust quotas accordingly.
@@ -82,7 +82,7 @@ def main() -> None:
         csv_reader = csv.DictReader(f)
         archived_data = {}
         for line in csv_reader:
-            drive_name = line["research_project"]
+            drive_name = line["research_project"].lower()
             premigrated_used_kb = float(line["premigrated_used_kb"].replace(",", ""))
             migrated_used_kb = float(line["migrated_used_kb"].replace(",", ""))
             archived_data[drive_name] = {
@@ -151,14 +151,32 @@ def main() -> None:
             try:
                 # Get the drive group information from ProjectDB
                 drive_groups = project_db.get_drive_groups(drive_id=drive.id)
-
             except Exception as e:
                 logging.error(f"Error fetching drive groups for research drive {drive.name}: {e}")
                 error_views.append({"drive": drive.name, "error": e})
                 continue
 
+            # Case-Sensitive Drive Names:
+            #   The ResearchDrive model from ProjectDB does not preserve the case of the drive name. We get the exact
+            #   drive name from the ACL groups in ProjectDB instead since these match the directory name in
+            #   Unifiles (which will determine the folder path in Vast during the data migration).
+            drive_exact_name = ""
             try:
-                if any(view.path == f"/{config.research_drives_root}/{drive.name}" for view in existing_views):
+                # Get the ACL group information for the drive from ProjectDB
+                acl_groups = project_db.get_drive_acl_groups(drive_name=drive.name)
+                logging.info(f"Retrieved {len(acl_groups)} ACL groups for research drive {drive.name}.")
+                if acl_groups:
+                    drive_exact_name = acl_groups[0].drive_name
+                else:
+                    logging.warning(f"No ACL groups found for research drive {drive.name}.")
+                    raise ValueError(f"Could not determine exact name for {drive.name}.")
+            except Exception as e:
+                logging.error(f"Error fetching ACL groups for research drive {drive.name}: {e}")
+                error_views.append({"drive": drive.name, "error": e})
+                continue
+
+            try:
+                if any(view.path == f"/{config.research_drives_root}/{drive_exact_name}" for view in existing_views):
                     logging.info(f"View for research drive {drive.name} already exists. Skipping.")
                     skipped_views.append({"drive": drive.name, "details": "Found an existing view in Vast."})
                     continue
@@ -168,18 +186,22 @@ def main() -> None:
                         f"[DRY RUN] Would create view for drive {drive.name} with quota {drive.allocated_gb} GB."
                     )
                     created_views.append({"drive": drive.name,
+                                          "drive_exact_name": drive_exact_name,
                                           "drive_id": drive.id,
                                           "quota_gb": drive.allocated_gb,})
                 else:
                     vast.create_research_drive(
-                        name=drive.name,
+                        name=drive_exact_name,
                         quota_gb=round(drive.allocated_gb),
                         groups=drive_groups,
                         policy_id=policy_id,
                         # Don't create the directory since it should exist once the Unifiles migration is complete
                         create_dir=False,
                     )
-                    created_views.append({"drive": drive.name, "drive_id": drive.id, "quota_gb": drive.allocated_gb})
+                    created_views.append({"drive": drive.name,
+                                          "drive_exact_name": drive_exact_name,
+                                          "drive_id": drive.id,
+                                          "quota_gb": drive.allocated_gb})
             except vastpy.RESTFailure as e:
                 if e.status == 409:
                     logging.info(f"Conflict for research drive {drive.name}. Skipping. Details: {e}")
@@ -223,7 +245,10 @@ def main() -> None:
             os.makedirs("output", exist_ok=True)
             with open("output/created_views.txt", "w") as f:
                 for drive in created_views:
-                    f.write(f"{drive['drive']} (ID: {drive['drive_id']}): {drive['quota_gb']} GB\n")
+                    f.write(
+                        f"{drive['drive']} (ID: {drive['drive_id']}, Exact Name: "
+                        f"{drive['drive_exact_name']}): {drive['quota_gb']} GB\n"
+                    )
 
             with open("output/skipped_views.txt", "w") as f:
                 for item in skipped_views:
