@@ -283,6 +283,15 @@ class VastAPIClient:
         Use this handler to create research drives with consistent configuration and permissions,
         instead of having to call the individual methods separately.
 
+        Args:
+            name: Name of the research drive to create. This must be an exact case-sensitive match to the directory name
+                  if you are creating a view for an existing directory (create_dir=False).
+            quota_gb: The initial quota size in gigabytes.
+            groups: The ACL groups for the research drive.
+            policy_id: The ID of the view policy to use.
+            create_dir: Whether to create the directory for the research drive. If False, the directory must already
+                        exist. If True, the directory will be created if it does not exist or error if it does.
+
         Raises on failure.
         """
         if not self.client:
@@ -295,7 +304,7 @@ class VastAPIClient:
             policy_id=policy_id,
             create_dir=create_dir,
             protocols=[ViewAccessProtocol.SMB],
-            smb_share_name=name,
+            smb_share_name=name.lower(), # always use lowercase for consistent share names
         )
         view_id = view.get("id")
         if not view_id:
