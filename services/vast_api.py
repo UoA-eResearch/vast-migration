@@ -339,6 +339,15 @@ class VastAPIClient:
                     "grantee": "groups",
                 }
             )
+        if groups.t_group:
+            acl.append(
+                {
+                    "fqdn": "UoA.auckland.ac.nz",
+                    "name": f"{groups.t_group}",
+                    "perm": "READ",
+                    "grantee": "groups",
+                }
+            )
 
         if acl:
             acl_params = {"share_acl": {"enabled": True, "acl": acl}}
