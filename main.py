@@ -2,6 +2,7 @@ import argparse
 import csv
 import logging
 import os
+from typing import TypedDict
 
 import vastpy
 from barbicanclient.v1.client import Client as BarbicanSDKClient
@@ -13,6 +14,9 @@ from services.vast_api import VastAPIClient
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+class ResearchDriveInfo(TypedDict):
+    drive_name: str
+    drive: ResearchDrive
 
 def _get_secret_value(
     barbican: BarbicanSDKClient, secret_ref: str, secret_label: str
@@ -85,7 +89,7 @@ def main() -> None:
             drive_name = line["research_project"]
             premigrated_used_kb = float(line["premigrated_used_kb"].replace(",", ""))
             migrated_used_kb = float(line["migrated_used_kb"].replace(",", ""))
-            archived_data[drive_name] = {
+            archived_data[drive_name.lower()] = {
                 "total_archived_used_gb": (premigrated_used_kb + migrated_used_kb) / (1024**2)  # Convert KB to GB
             }
     logging.info(f"Loaded archived data info from {args.archived_data_file}.")
@@ -98,27 +102,29 @@ def main() -> None:
     )
     with ProjectDBAPIClient(f"https://{config.project_db_api_host}", project_db_api_key) as project_db:
         # Fetch drive information for each drive name
-        drives: list[ResearchDrive] = []
+        drives: list[ResearchDriveInfo] = []
         for drive_name in drive_names_to_process:
             try:
                 drive = project_db.get_research_drive_by_name(drive_name)
-                drives.append(drive)
+                drives.append({"drive_name": drive_name, "drive": drive})
             except Exception as e:
                 error_views.append({"drive": drive_name, "error": e})
         logging.info(f"Retrieved {len(drives)} research drives from ProjectDB.")
 
-        for drive in drives:
-            if drive.name in archived_data:
-                total_archived_used_gb = archived_data[drive.name]["total_archived_used_gb"]
+        for drive_info in drives:
+            drive = drive_info["drive"]
+            drive_name = drive_info["drive_name"]
+            if drive_name.lower() in archived_data:
+                total_archived_used_gb = archived_data[drive_name.lower()]["total_archived_used_gb"]
                 original_allocated_gb = drive.allocated_gb
                 if total_archived_used_gb > 0:
                     drive.allocated_gb += total_archived_used_gb
                     logging.info(
-                        f"Adjusted allocated GB for drive {drive.name} from {original_allocated_gb} GB "
+                        f"Adjusted allocated GB for drive {drive_name} from {original_allocated_gb} GB "
                         f"to {drive.allocated_gb} GB based on archived data usage of {total_archived_used_gb} GB.")
             else:
                 logging.warning(
-                    f"No archived data information found for drive {drive.name}. "
+                    f"No archived data information found for drive {drive_name}. "
                     f"Using original allocated GB of {drive.allocated_gb} GB."
                 )
 
@@ -147,49 +153,51 @@ def main() -> None:
             raise RuntimeError("could not determine view policy id")
 
         # For each research drive, create a matching view in Vast and apply the quota
-        for drive in drives:
+        for drive_info in drives:
+            drive = drive_info["drive"]
+            drive_name = drive_info["drive_name"]
             try:
                 # Get the drive group information from ProjectDB
                 drive_groups = project_db.get_drive_groups(drive_id=drive.id)
 
             except Exception as e:
-                logging.error(f"Error fetching drive groups for research drive {drive.name}: {e}")
-                error_views.append({"drive": drive.name, "error": e})
+                logging.error(f"Error fetching drive groups for research drive {drive_name}: {e}")
+                error_views.append({"drive": drive_name, "error": e})
                 continue
 
             try:
-                if any(view.path == f"/{config.research_drives_root}/{drive.name}" for view in existing_views):
-                    logging.info(f"View for research drive {drive.name} already exists. Skipping.")
-                    skipped_views.append({"drive": drive.name, "details": "Found an existing view in Vast."})
+                if any(view.path == f"/{config.research_drives_root}/{drive_name}" for view in existing_views):
+                    logging.info(f"View for research drive {drive_name} already exists. Skipping.")
+                    skipped_views.append({"drive": drive_name, "details": "Found an existing view in Vast."})
                     continue
 
                 if args.dry_run:
                     logging.info(
-                        f"[DRY RUN] Would create view for drive {drive.name} with quota {drive.allocated_gb} GB."
+                        f"[DRY RUN] Would create view for drive {drive_name} with quota {drive.allocated_gb} GB."
                     )
-                    created_views.append({"drive": drive.name,
+                    created_views.append({"drive": drive_name,
                                           "drive_id": drive.id,
                                           "quota_gb": drive.allocated_gb,})
                 else:
                     vast.create_research_drive(
-                        name=drive.name,
+                        name=drive_name,
                         quota_gb=round(drive.allocated_gb),
                         groups=drive_groups,
                         policy_id=policy_id,
                         # Don't create the directory since it should exist once the Unifiles migration is complete
                         create_dir=False,
                     )
-                    created_views.append({"drive": drive.name, "drive_id": drive.id, "quota_gb": drive.allocated_gb})
+                    created_views.append({"drive": drive_name, "drive_id": drive.id, "quota_gb": drive.allocated_gb})
             except vastpy.RESTFailure as e:
                 if e.status == 409:
-                    logging.info(f"Conflict for research drive {drive.name}. Skipping. Details: {e}")
-                    skipped_views.append({"drive": drive.name, "details": e})
+                    logging.info(f"Conflict for research drive {drive_name}. Skipping. Details: {e}")
+                    skipped_views.append({"drive": drive_name, "details": e})
                 else:
-                    logging.error(f"HTTP error for research drive {drive.name}: {e}")
-                    error_views.append({"drive": drive.name, "error": e})
+                    logging.error(f"HTTP error for research drive {drive_name}: {e}")
+                    error_views.append({"drive": drive_name, "error": e})
             except Exception as e:
-                logging.error(f"Error creating view for research drive {drive.name}: {e}")
-                error_views.append({"drive": drive.name, "error": e})
+                logging.error(f"Error creating view for research drive {drive_name}: {e}")
+                error_views.append({"drive": drive_name, "error": e})
 
         # Update the project notes in ProjectDB for drives that had views successfully created
         if args.dry_run:

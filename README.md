@@ -1,7 +1,7 @@
 # vast-migration
 Script for creating views in Vast as part of data migration from Unifiles.
 
-Drives to be processed must be provided in a CSV file containing the names of the research drives (e.g. `ressci202300019-testresearchdrive`). This allows us to process drives in batches rather than all at once.
+Drives to be processed must be provided in a CSV file containing the **case-sensitive** names of the research drives (e.g. `ressci202300019-testresearchdrive`). This allows us to process drives in batches rather than all at once.
 
 The script will read the list of drive names from the CSV, fetch the corresponding drive info and group names from the Centre for eResearch ProjectDB API, and then create views in Vast with the appropriate ACLs and quotas.
 
@@ -81,6 +81,7 @@ Note: The OS_AUTH_TYPE field may be deprecated in the future. It is included her
 ### 2. Prepare the input CSV file
 
 Create a CSV file with a list of research drive names, one per line. See `input\drives-to-process.example.csv` for the expected format.
+The drive names must be **case-sensitive** and match the names of the directories in Vast exactly.
 
 ### 3. Obtain the Archived data usage CSV file
 
