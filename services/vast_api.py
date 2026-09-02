@@ -232,7 +232,7 @@ class VastAPIClient:
         # Set quota
         quota_bytes = quota_gb * 1024 * 1024 * 1024
         quota_data = {
-            "name": f"{name}-quota",
+            "name": f"{name}",
             "path": path,
             "hard_limit": quota_bytes,
             "soft_limit": int(quota_bytes * 0.8),
@@ -275,7 +275,7 @@ class VastAPIClient:
     def create_research_drive(
         self, name: str, quota_gb: int, groups: ResearchDriveGroups, policy_id: int | None, create_dir: bool = True
     ):
-        """Create an SMB view for a research drive using the default SMB policy.
+        """Create an SMB view for a research drive using the specified view policy.
 
         Once the view is created, this handler also adds the appropriate ACLs,
         and sets the specified quota on the view's path.
